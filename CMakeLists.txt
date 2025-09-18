@@ -35,6 +35,12 @@ target_link_libraries(SameGame
         Qt6::Quick
 )
 
+# Put runtime in bin/ and use a lowercase binary name to avoid clashes
+set_target_properties(SameGame PROPERTIES
+    OUTPUT_NAME samegame
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
 install(TARGETS SameGame
     BUNDLE DESTINATION .
     RUNTIME DESTINATION .
