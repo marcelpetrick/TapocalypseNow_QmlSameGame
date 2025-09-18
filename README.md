@@ -4,6 +4,10 @@ A tiny, flashy SameGame clone built with Qt 6 (Quick + QML) and C++. Working ti
 
 [https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame).
 
+## Current state:
+
+![image](DevState_Screenshot.png)
+
 ---
 
 ## Intention

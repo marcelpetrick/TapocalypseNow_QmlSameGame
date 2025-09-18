@@ -1,4 +1,4 @@
-# List of issues, which have to be mended - since no collabroation board is used, I list them here
+# List of issues, which have to be mended - since no collaboration board is used, I list them here
 * remove the "reset highscore"-button and functionality
 * animations for the collapse are missing
 * game logic is sometimes flawed: all groups of three similar tiles shall be removable
