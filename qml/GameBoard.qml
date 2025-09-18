@@ -20,20 +20,39 @@ Item {
         return ["#00E5FF", "#FF00E5", "#00FFAE", "#FFD400", "#8B80FF", "#FF5E5B"];
     }
 
-    function reset() {
-        score = 0; moves = 0; gameOver = false
-        grid = []
-        for (let r = 0; r < rows; ++r) {
-            let row = []
-            for (let c = 0; c < cols; ++c) {
-                row.push(Math.floor(Math.random() * neonPalette().length))
-            }
-            grid.push(row)
+    // ---- helpers -----------------------------------------------------------
+    function inBounds(r, c) { return r >= 0 && r < rows && c >= 0 && c < cols; }
+
+    function rebuildDelegates() {
+        const m = rows * cols
+        if (repeater.model === m) {
+            repeater.model = 0
         }
-        repeater.model = rows * cols   // ensure delegates exist
+        repeater.model = m
     }
 
-    function inBounds(r, c) { return r >= 0 && r < rows && c >= 0 && c < cols; }
+    function refreshGrid() { tileView.forceLayout() }
+
+    // ---- game logic --------------------------------------------------------
+    function reset() {
+        console.log("[GameBoard] reset()")
+
+        score = 0; moves = 0; gameOver = false
+
+        // Build a NEW grid and assign once (triggers change notification)
+        const paletteLen = neonPalette().length
+        let newGrid = []
+        for (let r = 0; r < rows; ++r) {
+            let row = new Array(cols)
+            for (let c = 0; c < cols; ++c)
+                row[c] = Math.floor(Math.random() * paletteLen)
+            newGrid.push(row)
+        }
+        grid = newGrid
+        console.log("[GameBoard] reset() -> grid assigned, size:", rows, "x", cols)
+
+        rebuildDelegates()
+    }
 
     function flood(r, c, color, visited) {
         const key = r + "," + c
@@ -53,49 +72,67 @@ Item {
         if (!inBounds(r, c)) return
         const color = grid[r][c]
         if (color === -1) return
+
         const visited = {}
         const size = flood(r, c, color, visited)
+        console.log("[GameBoard] removeGroup(", r, c, ") color:", color, "size:", size)
         if (size < 2) return
 
+        // Work on a copy, then reassign
+        let g = grid.map(row => row.slice())
         for (let key in visited) {
             const [rr, cc] = key.split(",").map(Number)
-            grid[rr][cc] = -1
+            g[rr][cc] = -1
         }
+        grid = g
 
         score += size * size
         moves += 1
+        console.log("[GameBoard] removeGroup -> score:", score, "moves:", moves)
+
         collapse()
+
         if (!hasMoves()) {
+            console.log("[GameBoard] no more moves -> game over, score:", score)
             gameOver = true
             gameEnded(score)
         }
     }
 
     function collapse() {
+        console.log("[GameBoard] collapse()")
+        // Copy, mutate, then reassign
+        let g = grid.map(row => row.slice())
+
         // drop down
         for (let c = 0; c < cols; ++c) {
             let write = rows - 1
             for (let r = rows - 1; r >= 0; --r) {
-                if (grid[r][c] !== -1) {
-                    if (write !== r) grid[write][c] = grid[r][c]
+                if (g[r][c] !== -1) {
+                    if (write !== r) g[write][c] = g[r][c]
                     write--
                 }
             }
-            for (let r = write; r >= 0; --r) grid[r][c] = -1
+            for (let r = write; r >= 0; --r) g[r][c] = -1
         }
+
         // shift left
         let writeC = 0
         for (let c = 0; c < cols; ++c) {
             let has = false
-            for (let r = 0; r < rows; ++r) if (grid[r][c] !== -1) { has = true; break }
+            for (let r = 0; r < rows; ++r) if (g[r][c] !== -1) { has = true; break }
             if (has) {
                 if (writeC !== c) {
-                    for (let r = 0; r < rows; ++r) { grid[r][writeC] = grid[r][c]; grid[r][c] = -1 }
+                    for (let r = 0; r < rows; ++r) { g[r][writeC] = g[r][c]; g[r][c] = -1 }
                 }
                 writeC++
             }
         }
-        // ask the view to relayout (no name clash with gridChanged signal)
+
+        grid = g
+        console.log("[GameBoard] collapse() -> grid reassigned")
+
+        rebuildDelegates()
         refreshGrid()
     }
 
@@ -111,9 +148,7 @@ Item {
         return false
     }
 
-    function refreshGrid() { tileView.forceLayout() }
-
-    // Defer so delegates see an initialized grid
+    // Defer so delegates see an initialized grid (prevents early undefined reads)
     Component.onCompleted: Qt.callLater(reset)
 
     Grid {
@@ -122,19 +157,26 @@ Item {
         columns: cols
         rows: board.rows
         spacing: cell * 0.06
+
         Repeater {
             id: repeater
             model: rows * cols
+
             delegate: Tile {
                 width: cell
                 height: cell
                 r: Math.floor(index / cols)
                 c: index % cols
-                // Guard against uninitialized grid access
+
+                // Robust guard against uninitialized grid access
                 colorIndex: (board.grid[r] !== undefined && board.grid[r][c] !== undefined)
                             ? board.grid[r][c] : -1
+
                 palette: board.neonPalette()
-                onClicked: board.removeGroup(r, c)
+                onClicked: {
+                    console.log("[Tile] clicked r:", r, "c:", c, "color:", colorIndex)
+                    board.removeGroup(r, c)
+                }
             }
         }
     }

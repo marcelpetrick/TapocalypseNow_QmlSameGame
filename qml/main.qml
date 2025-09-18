@@ -56,7 +56,10 @@ ApplicationWindow {
         Item { Layout.fillWidth: true }
         Button {
             text: "New Game"
-            onClicked: game.reset()
+            onClicked: {
+                console.log("[Main] New Game clicked")
+                game.reset()
+            }
         }
         Button {
             text: "Highscores"
