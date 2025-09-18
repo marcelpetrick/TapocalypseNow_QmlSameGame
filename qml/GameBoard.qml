@@ -30,7 +30,7 @@ Item {
             }
             grid.push(row)
         }
-        repeater.model = rows * cols
+        repeater.model = rows * cols   // ensure delegates exist
     }
 
     function inBounds(r, c) { return r >= 0 && r < rows && c >= 0 && c < cols; }
@@ -95,6 +95,7 @@ Item {
                 writeC++
             }
         }
+        // ask the view to relayout (no name clash with gridChanged signal)
         refreshGrid()
     }
 
@@ -110,10 +111,10 @@ Item {
         return false
     }
 
-    // renamed to avoid clashing with the auto-generated 'gridChanged' signal
     function refreshGrid() { tileView.forceLayout() }
 
-    Component.onCompleted: reset()
+    // Defer so delegates see an initialized grid
+    Component.onCompleted: Qt.callLater(reset)
 
     Grid {
         id: tileView
@@ -129,7 +130,9 @@ Item {
                 height: cell
                 r: Math.floor(index / cols)
                 c: index % cols
-                colorIndex: board.grid[r][c]
+                // Guard against uninitialized grid access
+                colorIndex: (board.grid[r] !== undefined && board.grid[r][c] !== undefined)
+                            ? board.grid[r][c] : -1
                 palette: board.neonPalette()
                 onClicked: board.removeGroup(r, c)
             }

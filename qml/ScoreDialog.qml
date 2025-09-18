@@ -1,7 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 Popup {
     id: root
@@ -16,10 +15,8 @@ Popup {
         border.width: 2
     }
 
-
     property int candidateScore: 0
     property bool browsing: false
-
 
     function consider(score) {
         candidateScore = score
@@ -31,18 +28,15 @@ Popup {
         }
     }
 
-
     function openForBrowsing() {
         browsing = true
         candidateScore = 0
         open()
     }
 
-
     contentItem: ColumnLayout {
         spacing: 12
         width: 520
-
 
         Label {
             Layout.alignment: Qt.AlignHCenter
@@ -51,7 +45,6 @@ Popup {
             color: "#9ad7ff"
         }
 
-
         // Entry form if not browsing
         RowLayout {
             visible: !browsing
@@ -59,7 +52,6 @@ Popup {
             Label { text: "Your score:"; color: "#cde7ff" }
             Label { text: candidateScore; color: "#7dfcff"; font.bold: true }
         }
-
 
         RowLayout {
             visible: !browsing
@@ -77,7 +69,6 @@ Popup {
                 }
             }
         }
-
 
         // Highscore list
         ListView {
@@ -100,7 +91,6 @@ Popup {
             }
             ScrollBar.vertical: ScrollBar {}
         }
-
 
         RowLayout {
             Layout.alignment: Qt.AlignRight
