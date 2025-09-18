@@ -72,7 +72,7 @@ ApplicationWindow {
     Rectangle {
         id: boardFrame
         anchors.fill: parent
-        anchors.margins: 40
+        anchors.margins: 120
         radius: 24
         color: "#0B0D19"
         border.color: "#14204F"
@@ -90,8 +90,14 @@ ApplicationWindow {
         GameBoard {
             id: game
             anchors.centerIn: parent
-            width: Math.min(parent.width - 200, parent.height - 220) * 1.6
-            height: width / 1.6
+
+            // aspect = cols / rows (how many tiles wide vs tall)
+            readonly property real aspect: cols / rows
+
+            // shrink/grow here: 0.55 = 55% of frame width
+            width: boardFrame.width * 0.55
+            height: width / aspect
+
             rows: root.gridRows
             cols: root.gridCols
             onGameEnded: scoreDialog.consider(score)
