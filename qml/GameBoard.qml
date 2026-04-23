@@ -26,6 +26,8 @@ Item {
     // ---- timers for animation staging -------------------------------------
     property var pendingRemoval: ({
     })
+    property int pendingRow: -1
+    property int pendingCol: -1
 
     signal gameEnded(int score)
 
@@ -57,22 +59,6 @@ Item {
         });
     }
 
-    function cloneGrid(sourceGrid) {
-        return sourceGrid.map((row) => {
-            return row.slice();
-        });
-    }
-
-    function makeEmptyGrid() {
-        let newGrid = [];
-        for (let r = 0; r < rows; ++r) {
-            let row = new Array(cols);
-            row.fill(-1);
-            newGrid.push(row);
-        }
-        return newGrid;
-    }
-
     // ---- game logic --------------------------------------------------------
     function reset() {
         console.log("[GameBoard] reset()");
@@ -81,43 +67,36 @@ Item {
         score = 0;
         moves = 0;
         gameOver = false;
-        // Build a NEW grid and assign once (triggers change notification)
         const paletteLen = neonPalette().length;
+        let attempts = 0;
         let newGrid = [];
-        for (let r = 0; r < rows; ++r) {
-            let row = new Array(cols);
-            for (let c = 0; c < cols; ++c) row[c] = Math.floor(Math.random() * paletteLen)
-            newGrid.push(row);
-        }
+        do {
+            newGrid = [];
+            for (let r = 0; r < rows; ++r) {
+                let row = new Array(cols);
+                for (let c = 0; c < cols; ++c) row[c] = Math.floor(Math.random() * paletteLen)
+                newGrid.push(row);
+            }
+            attempts++;
+        } while (!gameLogic.hasMoves(newGrid, minimumGroupSize) && attempts < 128)
+        pendingRow = -1;
+        pendingCol = -1;
+        pendingRemoval = ({
+        });
         grid = newGrid;
-        console.log("[GameBoard] reset() -> grid assigned, size:", rows, "x", cols);
+        gameOver = !gameLogic.hasMoves(grid, minimumGroupSize);
+        console.log("[GameBoard] reset() -> grid assigned, size:", rows, "x", cols, "attempts:", attempts);
         rebuildDelegates();
-    }
-
-    function flood(r, c, color, visited) {
-        if (!inBounds(r, c))
-            return 0;
-
-        const key = r + "," + c;
-        if (visited[key])
-            return 0;
-
-        visited[key] = true;
-        if (grid[r][c] !== color)
-            return 0;
-
-        let count = 1;
-        count += flood(r + 1, c, color, visited);
-        count += flood(r - 1, c, color, visited);
-        count += flood(r, c + 1, color, visited);
-        count += flood(r, c - 1, color, visited);
-        return count;
     }
 
     function removeGroup(r, c) {
         if (!inBounds(r, c))
             return ;
 
+        if (gameOver) {
+            console.log("[GameBoard] click ignored: game over");
+            return ;
+        }
         if (busy) {
             console.log("[GameBoard] click ignored: busy");
             return ;
@@ -127,12 +106,9 @@ Item {
             console.log("[GameBoard] click on empty");
             return ;
         }
-        const visited = {
-        };
-        const size = flood(r, c, color, visited);
-        console.log("[GameBoard] click r:", r, "c:", c, "color:", color, "size:", size);
-        if (size < minimumGroupSize) {
-            // INVALID -> shake this single tile
+        const analysis = gameLogic.analyzeSelection(grid, r, c, minimumGroupSize);
+        console.log("[GameBoard] click r:", r, "c:", c, "color:", color, "size:", analysis.groupSize);
+        if (!analysis.valid) {
             shakeSet = ({
             });
             shakeSet[r + "," + c] = true;
@@ -140,86 +116,32 @@ Item {
             shakeClearTimer.restart();
             return ;
         }
-        // VALID -> pop preview, then remove on timer
         busy = true;
-        popSet = visited;
+        pendingRow = r;
+        pendingCol = c;
+        pendingRemoval = analysis.selection;
+        popSet = analysis.selection;
         console.log("[GameBoard] pop preview for", Object.keys(popSet).length, "tiles");
-        pendingRemoval = visited;
         removeTimer.restart();
     }
 
-    // Execute the actual removal + collapse after pop preview
-    function doRemoveAndCollapse(selection) {
-        // Work on a copy, then reassign to notify
-        let g = cloneGrid(grid);
-        // remove selected
-        let removedCount = 0;
-        for (let key in selection) {
-            const [rr, cc] = key.split(",").map(Number);
-            if (g[rr][cc] !== -1) {
-                g[rr][cc] = -1;
-                removedCount++;
-            }
+    function doRemoveAndCollapse() {
+        const move = gameLogic.applyMove(grid, pendingRow, pendingCol, minimumGroupSize);
+        if (!move.valid) {
+            console.log("[GameBoard] pending move became invalid");
+            return ;
         }
-        grid = g;
-        // scoring & moves
-        score += removedCount * removedCount;
+        grid = move.grid;
+        score += move.removedCount * move.removedCount;
         moves += 1;
-        console.log("[GameBoard] removed", removedCount, "tiles -> score:", score, "moves:", moves);
-        // collapse
-        collapse();
-        // end?
-        if (!hasMoves()) {
+        console.log("[GameBoard] removed", move.removedCount, "tiles -> score:", score, "moves:", moves);
+        rebuildDelegates();
+        refreshGrid();
+        if (!move.hasMoves) {
             console.log("[GameBoard] no more moves -> game over, score:", score);
             gameOver = true;
             gameEnded(score);
         }
-    }
-
-    function collapse() {
-        console.log("[GameBoard] collapse()");
-        const sourceGrid = cloneGrid(grid);
-        let collapsedGrid = makeEmptyGrid();
-        let targetColumn = 0;
-        for (let c = 0; c < cols; ++c) {
-            let compactedColumn = [];
-            for (let r = rows - 1; r >= 0; --r) {
-                if (sourceGrid[r][c] !== -1)
-                    compactedColumn.push(sourceGrid[r][c]);
-
-            }
-            if (compactedColumn.length === 0)
-                continue;
-
-            for (let i = 0; i < compactedColumn.length; ++i) collapsedGrid[rows - 1 - i][targetColumn] = compactedColumn[i]
-            targetColumn++;
-        }
-        grid = collapsedGrid;
-        console.log("[GameBoard] collapse() -> grid reassigned");
-        rebuildDelegates(); // let tiles rebind for “drop-in” anim
-        refreshGrid();
-    }
-
-    function hasMoves() {
-        let visited = ({
-        });
-        for (let r = 0; r < rows; ++r) {
-            for (let c = 0; c < cols; ++c) {
-                const key = r + "," + c;
-                const color = grid[r][c];
-                if (color === -1 || visited[key] === true)
-                    continue;
-
-                const group = ({
-                });
-                const size = flood(r, c, color, group);
-                for (let groupKey in group) visited[groupKey] = true
-                if (size >= minimumGroupSize)
-                    return true;
-
-            }
-        }
-        return false;
     }
 
     // Defer so delegates see an initialized grid
@@ -232,9 +154,11 @@ Item {
         repeat: false
         onTriggered: {
             console.log("[GameBoard] removeTimer fired");
-            doRemoveAndCollapse(pendingRemoval);
+            doRemoveAndCollapse();
             pendingRemoval = ({
             });
+            pendingRow = -1;
+            pendingCol = -1;
             popSet = ({
             });
             busy = false;

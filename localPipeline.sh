@@ -51,6 +51,7 @@ declare -a QMLLINT_TARGETS=()
 
 PARALLEL_JOBS=1
 CHECKSUM_COMMAND=""
+CTEST_COMMAND=""
 
 BUILD_OK=0
 TESTS_OK=0
@@ -199,6 +200,28 @@ resolve_checksum_command() {
     return 1
 }
 
+resolve_ctest_command() {
+    local cmake_path=""
+    local cmake_dir=""
+    local sibling_ctest=""
+
+    cmake_path="$(command -v cmake 2>/dev/null)" || return 1
+    cmake_dir="$(dirname "${cmake_path}")"
+    sibling_ctest="${cmake_dir}/ctest"
+
+    if [[ -x "${sibling_ctest}" ]]; then
+        printf '%s\n' "${sibling_ctest}"
+        return 0
+    fi
+
+    if command -v ctest >/dev/null 2>&1; then
+        command -v ctest
+        return 0
+    fi
+
+    return 1
+}
+
 collect_cpp_format_targets() {
     if [[ ! -d "${PROJECT_ROOT}/src" ]]; then
         return 0
@@ -314,12 +337,12 @@ discover_qmllint_targets() {
 run_tests_if_present() {
     local test_list_output=""
 
-    if ! command -v ctest >/dev/null 2>&1; then
+    if [[ -z "${CTEST_COMMAND}" ]]; then
         mark_result "CTest" "SKIP" "ctest is not installed"
         return 0
     fi
 
-    test_list_output="$(ctest --test-dir "${BUILD_DIR}" -N 2>/dev/null || true)"
+    test_list_output="$("${CTEST_COMMAND}" --test-dir "${BUILD_DIR}" -N 2>/dev/null || true)"
     if [[ "${test_list_output}" != *"Total Tests:"* ]]; then
         mark_result "CTest" "SKIP" "No CTest metadata found in ${BUILD_DIR}"
         return 0
@@ -331,7 +354,7 @@ run_tests_if_present() {
     fi
 
     log "Running CTest with ${PARALLEL_JOBS} parallel job(s)."
-    if run_command "Executing CTest" ctest --test-dir "${BUILD_DIR}" --output-on-failure --parallel "${PARALLEL_JOBS}"; then
+    if run_command "Executing CTest" "${CTEST_COMMAND}" --test-dir "${BUILD_DIR}" --output-on-failure --parallel "${PARALLEL_JOBS}"; then
         TESTS_OK=1
         mark_result "CTest" "PASS" "Registered tests completed without failures"
     else
@@ -594,6 +617,11 @@ main() {
     fi
 
     require_command cmake || missing_prerequisites=1
+
+    if ! CTEST_COMMAND="$(resolve_ctest_command)"; then
+        warn "Could not resolve a working ctest executable. Test stage may be skipped."
+        CTEST_COMMAND=""
+    fi
 
     if ! CHECKSUM_COMMAND="$(resolve_checksum_command)"; then
         error "Neither 'sha256sum' nor 'shasum' was found in PATH."

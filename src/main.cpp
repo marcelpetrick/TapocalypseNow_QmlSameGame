@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 
+#include "GameLogicBridge.h"
 #include "HighScoreManager.h"
 
 int main(int argc, char* argv[]) {
@@ -10,7 +11,9 @@ int main(int argc, char* argv[]) {
     QQmlApplicationEngine engine;
 
     HighScoreManager hsManager;
+    GameLogicBridge gameLogic;
     engine.rootContext()->setContextProperty("highScoreManager", &hsManager);
+    engine.rootContext()->setContextProperty("gameLogic", &gameLogic);
 
     const QUrl url(QStringLiteral("qrc:/SameGame/qml/main.qml"));
     QObject::connect(

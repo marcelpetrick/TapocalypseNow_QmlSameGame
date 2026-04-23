@@ -56,7 +56,6 @@ void HighScoreManager::saveToDisk() const {
 }
 
 QVariantList HighScoreManager::loadScores() {
-    loadFromDisk();
     QVariantList out;
     for (const auto& e : m_scores) {
         QVariantMap m;
@@ -69,12 +68,15 @@ QVariantList HighScoreManager::loadScores() {
 }
 
 bool HighScoreManager::qualifies(int score) const {
+    if (score <= 0) return false;
     if (m_scores.size() < kMaxEntries) return true;
     int minScore = m_scores.isEmpty() ? -1 : m_scores.last().score;
     return score > minScore;
 }
 
 void HighScoreManager::submitScore(const QString& name, int score) {
+    if (score <= 0) return;
+
     HighScoreEntry e{name.trimmed().left(20), score, QDateTime::currentMSecsSinceEpoch()};
     m_scores.push_back(e);
     std::sort(m_scores.begin(), m_scores.end(), [](const auto& a, const auto& b) {
