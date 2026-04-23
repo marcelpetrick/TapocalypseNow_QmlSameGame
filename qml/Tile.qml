@@ -8,6 +8,9 @@ Item {
     property int c
     property int colorIndex: -1 // -1 means empty cell
     property var palette: []
+    property bool interactive: true
+    property bool animatePosition: false
+    property int moveDuration: 260
     // animation triggers from GameBoard
     property bool popActive: false
     property bool shakeActive: false
@@ -105,6 +108,7 @@ Item {
         id: pressedArea
 
         anchors.fill: parent
+        enabled: tile.interactive
         hoverEnabled: true
         onClicked: tile.clicked()
         onEntered: hoverGlow.running = true
@@ -284,6 +288,26 @@ Item {
 
     transform: Translate {
         x: tile.jitterX
+    }
+
+    Behavior on x {
+        enabled: tile.animatePosition
+
+        NumberAnimation {
+            duration: tile.moveDuration
+            easing.type: Easing.InOutCubic
+        }
+
+    }
+
+    Behavior on y {
+        enabled: tile.animatePosition
+
+        NumberAnimation {
+            duration: tile.moveDuration
+            easing.type: Easing.InOutCubic
+        }
+
     }
 
     NumberAnimation on opacity {

@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 Item {
     // keys "r,c" -> true briefly on invalid click
+    // Bindings update automatically; keep this helper so phase code reads clearly.
 
     id: board
 
@@ -15,6 +16,11 @@ Item {
     property bool gameOver: false
     property bool busy: false // block clicks while animating
     property int minimumGroupSize: 3
+    readonly property real spacing: cell * 0.06
+    readonly property real pitch: cell + spacing
+    readonly property int removeHoldMs: 200
+    readonly property int fallAnimMs: 320
+    readonly property int shiftAnimMs: 260
     // Internal model: -1 empty; >=0 color index
     property var grid: []
     // Selection maps for tile-level animations
@@ -28,6 +34,12 @@ Item {
     })
     property int pendingRow: -1
     property int pendingCol: -1
+    property bool phaseHasMoves: false
+    property var hiddenSet: ({
+    })
+    property var movingTiles: []
+    property var pendingMovePlan: ({
+    })
 
     signal gameEnded(int score)
 
@@ -49,7 +61,6 @@ Item {
     }
 
     function refreshGrid() {
-        tileView.forceLayout();
     }
 
     function clearSelections() {
@@ -57,6 +68,85 @@ Item {
         });
         shakeSet = ({
         });
+    }
+
+    function clearPhaseState() {
+        hiddenSet = ({
+        });
+        movingTiles = [];
+        pendingMovePlan = ({
+        });
+        phaseHasMoves = false;
+    }
+
+    function hideMotionSources(motions) {
+        let nextHidden = ({
+        });
+        for (let i = 0; i < motions.length; ++i) {
+            const motion = motions[i];
+            nextHidden[motion.fromRow + "," + motion.fromCol] = true;
+        }
+        hiddenSet = nextHidden;
+    }
+
+    function buildAnimatedTiles(motions, durationMs) {
+        let nextTiles = [];
+        for (let i = 0; i < motions.length; ++i) {
+            const motion = motions[i];
+            nextTiles.push({
+                "color": motion.color,
+                "fromRow": motion.fromRow,
+                "fromCol": motion.fromCol,
+                "toRow": motion.toRow,
+                "toCol": motion.toCol,
+                "duration": durationMs
+            });
+        }
+        movingTiles = nextTiles;
+    }
+
+    function applyFallPhase() {
+        if (!pendingMovePlan.valid) {
+            finishMovePhases();
+            return ;
+        }
+        if (pendingMovePlan.fallMotions.length === 0) {
+            grid = pendingMovePlan.afterFallGrid;
+            refreshGrid();
+            applyShiftPhase();
+            return ;
+        }
+        hideMotionSources(pendingMovePlan.fallMotions);
+        buildAnimatedTiles(pendingMovePlan.fallMotions, fallAnimMs);
+        fallTimer.restart();
+    }
+
+    function applyShiftPhase() {
+        grid = pendingMovePlan.afterFallGrid;
+        refreshGrid();
+        if (pendingMovePlan.shiftMotions.length === 0) {
+            finishMovePhases();
+            return ;
+        }
+        hideMotionSources(pendingMovePlan.shiftMotions);
+        buildAnimatedTiles(pendingMovePlan.shiftMotions, shiftAnimMs);
+        shiftTimer.restart();
+    }
+
+    function finishMovePhases() {
+        grid = pendingMovePlan.valid ? pendingMovePlan.afterShiftGrid : grid;
+        clearSelections();
+        clearPhaseState();
+        pendingRemoval = ({
+        });
+        pendingRow = -1;
+        pendingCol = -1;
+        busy = false;
+        if (!phaseHasMoves) {
+            console.log("[GameBoard] no more moves -> game over, score:", score);
+            gameOver = true;
+            gameEnded(score);
+        }
     }
 
     // ---- game logic --------------------------------------------------------
@@ -83,10 +173,11 @@ Item {
         pendingCol = -1;
         pendingRemoval = ({
         });
+        clearPhaseState();
         grid = newGrid;
         gameOver = !gameLogic.hasMoves(grid, minimumGroupSize);
         console.log("[GameBoard] reset() -> grid assigned, size:", rows, "x", cols, "attempts:", attempts);
-        rebuildDelegates();
+        refreshGrid();
     }
 
     function removeGroup(r, c) {
@@ -108,6 +199,7 @@ Item {
         }
         const analysis = gameLogic.analyzeSelection(grid, r, c, minimumGroupSize);
         console.log("[GameBoard] click r:", r, "c:", c, "color:", color, "size:", analysis.groupSize);
+        console.log("[GameBoard] selection valid:", analysis.valid ? "YES" : "NO");
         if (!analysis.valid) {
             shakeSet = ({
             });
@@ -120,28 +212,25 @@ Item {
         pendingRow = r;
         pendingCol = c;
         pendingRemoval = analysis.selection;
-        popSet = analysis.selection;
-        console.log("[GameBoard] pop preview for", Object.keys(popSet).length, "tiles");
+        clearSelections();
         removeTimer.restart();
     }
 
-    function doRemoveAndCollapse() {
-        const move = gameLogic.applyMove(grid, pendingRow, pendingCol, minimumGroupSize);
+    function startResolvedMove() {
+        const move = gameLogic.planMove(grid, pendingRow, pendingCol, minimumGroupSize);
         if (!move.valid) {
             console.log("[GameBoard] pending move became invalid");
+            busy = false;
             return ;
         }
-        grid = move.grid;
+        pendingMovePlan = move;
+        phaseHasMoves = move.hasMoves;
+        grid = move.afterRemovalGrid;
         score += move.removedCount * move.removedCount;
         moves += 1;
         console.log("[GameBoard] removed", move.removedCount, "tiles -> score:", score, "moves:", moves);
-        rebuildDelegates();
         refreshGrid();
-        if (!move.hasMoves) {
-            console.log("[GameBoard] no more moves -> game over, score:", score);
-            gameOver = true;
-            gameEnded(score);
-        }
+        removeHoldTimer.restart();
     }
 
     // Defer so delegates see an initialized grid
@@ -154,14 +243,46 @@ Item {
         repeat: false
         onTriggered: {
             console.log("[GameBoard] removeTimer fired");
-            doRemoveAndCollapse();
-            pendingRemoval = ({
+            startResolvedMove();
+        }
+    }
+
+    Timer {
+        id: removeHoldTimer
+
+        interval: removeHoldMs
+        repeat: false
+        onTriggered: {
+            console.log("[GameBoard] showing removal state for", removeHoldMs, "ms");
+            applyFallPhase();
+        }
+    }
+
+    Timer {
+        id: fallTimer
+
+        interval: fallAnimMs
+        repeat: false
+        onTriggered: {
+            grid = pendingMovePlan.afterFallGrid;
+            movingTiles = [];
+            hiddenSet = ({
             });
-            pendingRow = -1;
-            pendingCol = -1;
-            popSet = ({
+            refreshGrid();
+            applyShiftPhase();
+        }
+    }
+
+    Timer {
+        id: shiftTimer
+
+        interval: shiftAnimMs
+        repeat: false
+        onTriggered: {
+            movingTiles = [];
+            hiddenSet = ({
             });
-            busy = false;
+            finishMovePhases();
         }
     }
 
@@ -178,13 +299,12 @@ Item {
     }
 
     // ---- view --------------------------------------------------------------
-    Grid {
+    Item {
         id: tileView
 
         anchors.centerIn: parent
-        columns: cols
-        rows: board.rows
-        spacing: cell * 0.06
+        width: cols * cell + (cols - 1) * spacing
+        height: rows * cell + (rows - 1) * spacing
 
         Repeater {
             id: repeater
@@ -196,8 +316,10 @@ Item {
                 height: cell
                 r: Math.floor(index / cols)
                 c: index % cols
+                x: c * pitch
+                y: r * pitch
                 // Robust guard against uninitialized grid access
-                colorIndex: (board.grid[r] !== undefined && board.grid[r][c] !== undefined) ? board.grid[r][c] : -1
+                colorIndex: board.hiddenSet[r + "," + c] === true ? -1 : ((board.grid[r] !== undefined && board.grid[r][c] !== undefined) ? board.grid[r][c] : -1)
                 palette: board.neonPalette()
                 // animation flags from board maps
                 popActive: board.popSet[r + "," + c] === true
@@ -205,6 +327,30 @@ Item {
                 onClicked: {
                     console.log("[Tile] clicked r:", r, "c:", c, "color:", colorIndex);
                     board.removeGroup(r, c);
+                }
+            }
+
+        }
+
+        Repeater {
+            model: board.movingTiles
+
+            delegate: Tile {
+                required property var modelData
+
+                width: cell
+                height: cell
+                colorIndex: modelData.color
+                palette: board.neonPalette()
+                interactive: false
+                animatePosition: true
+                moveDuration: modelData.duration
+                x: modelData.fromCol * pitch
+                y: modelData.fromRow * pitch
+                z: 10
+                Component.onCompleted: {
+                    x = modelData.toCol * pitch;
+                    y = modelData.toRow * pitch;
                 }
             }
 

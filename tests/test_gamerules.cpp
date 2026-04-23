@@ -28,6 +28,7 @@ class GameRulesTest : public QObject {
     void collapse_dropsTilesBeforeShiftingColumnsLeft();
     void collapse_keepsNonEmptyColumnOrderStable();
     void hasMoves_usesThreeTileThreshold();
+    void planMove_exposesRemovalFallAndShiftPhases();
 };
 
 void GameRulesTest::analyzeSelection_requiresAtLeastThree() {
@@ -114,6 +115,40 @@ void GameRulesTest::hasMoves_usesThreeTileThreshold() {
         {4, 5, 6},
     });
     QVERIFY(GameRules::hasMoves(moveGrid, 3));
+}
+
+void GameRulesTest::planMove_exposesRemovalFallAndShiftPhases() {
+    const auto grid = makeGrid({
+        {0, 1, -1, 2},
+        {3, 1, 4, 3},
+        {5, 1, -1, 5},
+        {6, 1, 7, 9},
+    });
+
+    const auto plan = GameRules::planMove(grid, 0, 1, 3);
+
+    QVERIFY(plan.valid);
+    QCOMPARE(plan.removedCount, 4);
+    QCOMPARE(plan.afterRemovalGrid, makeGrid({
+                                        {0, -1, -1, 2},
+                                        {3, -1, 4, 3},
+                                        {5, -1, -1, 5},
+                                        {6, -1, 7, 9},
+                                    }));
+    QCOMPARE(plan.afterFallGrid, makeGrid({
+                                     {0, -1, -1, 2},
+                                     {3, -1, -1, 3},
+                                     {5, -1, 4, 5},
+                                     {6, -1, 7, 9},
+                                 }));
+    QCOMPARE(plan.afterShiftGrid, makeGrid({
+                                      {0, -1, 2, -1},
+                                      {3, -1, 3, -1},
+                                      {5, 4, 5, -1},
+                                      {6, 7, 9, -1},
+                                  }));
+    QCOMPARE(plan.fallMotions.size(), 1);
+    QCOMPARE(plan.shiftMotions.size(), 6);
 }
 
 QTEST_APPLESS_MAIN(GameRulesTest)

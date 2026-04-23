@@ -22,6 +22,7 @@ void HighScoreManagerTest::initTestCase() {
 }
 
 void HighScoreManagerTest::init() {
+    QCoreApplication::setApplicationName(QStringLiteral("HighScoreManagerTests_%1").arg(QString::fromLatin1(QTest::currentTestFunction())));
     HighScoreManager manager;
     manager.resetScores();
 }

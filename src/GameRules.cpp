@@ -69,29 +69,135 @@ GroupAnalysis GameRules::analyzeSelection(const GameGrid& grid, int row, int col
     return result;
 }
 
-GameGrid GameRules::collapse(const GameGrid& grid) {
+GameGrid GameRules::removeGroup(const GameGrid& grid, const QVector<BoardPosition>& group) {
+    GameGrid nextGrid = grid;
+    for (const auto& position : group) {
+        if (isInBounds(nextGrid, position.row, position.col)) {
+            nextGrid[position.row][position.col] = kEmptyCell;
+        }
+    }
+    return nextGrid;
+}
+
+GameGrid GameRules::collapseDown(const GameGrid& grid) {
     if (!isRectangular(grid) || grid.isEmpty()) return grid;
 
     const int rows = grid.size();
     const int cols = grid.first().size();
     GameGrid collapsed(rows, QVector<int>(cols, kEmptyCell));
+
+    for (int col = 0; col < cols; ++col) {
+        QVector<int> compactedColumn;
+        for (int row = rows - 1; row >= 0; --row) {
+            if (grid[row][col] != kEmptyCell) compactedColumn.push_back(grid[row][col]);
+        }
+
+        for (int index = 0; index < compactedColumn.size(); ++index) {
+            collapsed[rows - 1 - index][col] = compactedColumn[index];
+        }
+    }
+
+    return collapsed;
+}
+
+GameGrid GameRules::shiftColumnsLeft(const GameGrid& grid) {
+    if (!isRectangular(grid) || grid.isEmpty()) return grid;
+
+    const int rows = grid.size();
+    const int cols = grid.first().size();
+    GameGrid shifted(rows, QVector<int>(cols, kEmptyCell));
     int targetCol = 0;
 
     for (int sourceCol = 0; sourceCol < cols; ++sourceCol) {
-        QVector<int> compactedColumn;
-        for (int row = rows - 1; row >= 0; --row) {
-            if (grid[row][sourceCol] != kEmptyCell) compactedColumn.push_back(grid[row][sourceCol]);
+        bool hasTile = false;
+        for (int row = 0; row < rows; ++row) {
+            if (grid[row][sourceCol] != kEmptyCell) {
+                hasTile = true;
+                break;
+            }
         }
 
-        if (compactedColumn.isEmpty()) continue;
+        if (!hasTile) continue;
 
-        for (int index = 0; index < compactedColumn.size(); ++index) {
-            collapsed[rows - 1 - index][targetCol] = compactedColumn[index];
+        for (int row = 0; row < rows; ++row) {
+            shifted[row][targetCol] = grid[row][sourceCol];
         }
         ++targetCol;
     }
 
-    return collapsed;
+    return shifted;
+}
+
+GameGrid GameRules::collapse(const GameGrid& grid) { return shiftColumnsLeft(collapseDown(grid)); }
+
+QVector<TileMotion> GameRules::buildFallMotions(const GameGrid& fromGrid, const GameGrid& toGrid) {
+    QVector<TileMotion> motions;
+    if (!isRectangular(fromGrid) || fromGrid.isEmpty()) return motions;
+
+    const int rows = fromGrid.size();
+    const int cols = fromGrid.first().size();
+
+    for (int col = 0; col < cols; ++col) {
+        QVector<BoardPosition> sourcePositions;
+        QVector<BoardPosition> targetPositions;
+
+        for (int row = rows - 1; row >= 0; --row) {
+            if (fromGrid[row][col] != kEmptyCell) sourcePositions.push_back({row, col});
+            if (toGrid[row][col] != kEmptyCell) targetPositions.push_back({row, col});
+        }
+
+        const int count = qMin(sourcePositions.size(), targetPositions.size());
+        for (int index = 0; index < count; ++index) {
+            const auto& from = sourcePositions[index];
+            const auto& to = targetPositions[index];
+            if (from.row == to.row) continue;
+
+            motions.push_back({
+                fromGrid[from.row][from.col],
+                from,
+                to,
+            });
+        }
+    }
+
+    return motions;
+}
+
+QVector<TileMotion> GameRules::buildShiftMotions(const GameGrid& fromGrid, const GameGrid& toGrid) {
+    QVector<TileMotion> motions;
+    if (!isRectangular(fromGrid) || fromGrid.isEmpty()) return motions;
+
+    const int rows = fromGrid.size();
+    const int cols = fromGrid.first().size();
+    int targetCol = 0;
+
+    for (int sourceCol = 0; sourceCol < cols; ++sourceCol) {
+        bool hasTile = false;
+        for (int row = 0; row < rows; ++row) {
+            if (fromGrid[row][sourceCol] != kEmptyCell) {
+                hasTile = true;
+                break;
+            }
+        }
+
+        if (!hasTile) continue;
+
+        if (sourceCol != targetCol) {
+            for (int row = 0; row < rows; ++row) {
+                if (fromGrid[row][sourceCol] == kEmptyCell) continue;
+                motions.push_back({
+                    fromGrid[row][sourceCol],
+                    {row, sourceCol},
+                    {row, targetCol},
+                });
+            }
+        }
+
+        ++targetCol;
+    }
+
+    Q_UNUSED(toGrid);
+    return motions;
 }
 
 bool GameRules::hasMoves(const GameGrid& grid, int minimumGroupSize) {
@@ -126,14 +232,35 @@ MoveResult GameRules::applyMove(const GameGrid& grid, int row, int col, int mini
         return result;
     }
 
-    GameGrid nextGrid = grid;
-    for (const auto& position : analysis.group) {
-        nextGrid[position.row][position.col] = kEmptyCell;
-    }
+    const GameGrid nextGrid = removeGroup(grid, analysis.group);
 
     result.valid = true;
     result.removedCount = analysis.groupSize;
     result.grid = collapse(nextGrid);
     result.hasMoves = hasMoves(result.grid, minimumGroupSize);
+    return result;
+}
+
+MovePlan GameRules::planMove(const GameGrid& grid, int row, int col, int minimumGroupSize) {
+    MovePlan result;
+
+    const auto analysis = analyzeSelection(grid, row, col, minimumGroupSize);
+    result.group = analysis.group;
+    if (!analysis.valid) {
+        result.afterRemovalGrid = grid;
+        result.afterFallGrid = grid;
+        result.afterShiftGrid = grid;
+        result.hasMoves = hasMoves(grid, minimumGroupSize);
+        return result;
+    }
+
+    result.valid = true;
+    result.removedCount = analysis.groupSize;
+    result.afterRemovalGrid = removeGroup(grid, analysis.group);
+    result.afterFallGrid = collapseDown(result.afterRemovalGrid);
+    result.afterShiftGrid = shiftColumnsLeft(result.afterFallGrid);
+    result.fallMotions = buildFallMotions(result.afterRemovalGrid, result.afterFallGrid);
+    result.shiftMotions = buildShiftMotions(result.afterFallGrid, result.afterShiftGrid);
+    result.hasMoves = hasMoves(result.afterShiftGrid, minimumGroupSize);
     return result;
 }

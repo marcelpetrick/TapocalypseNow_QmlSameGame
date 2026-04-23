@@ -45,6 +45,23 @@ QVariantMap toSelectionMap(const QVector<BoardPosition>& group) {
     return selection;
 }
 
+QVariantList toMotions(const QVector<TileMotion>& motions) {
+    QVariantList rawMotions;
+    rawMotions.reserve(motions.size());
+
+    for (const auto& motion : motions) {
+        QVariantMap item;
+        item.insert("color", motion.color);
+        item.insert("fromRow", motion.from.row);
+        item.insert("fromCol", motion.from.col);
+        item.insert("toRow", motion.to.row);
+        item.insert("toCol", motion.to.col);
+        rawMotions.push_back(item);
+    }
+
+    return rawMotions;
+}
+
 }  // namespace
 
 GameLogicBridge::GameLogicBridge(QObject* parent) : QObject(parent) {}
@@ -68,6 +85,22 @@ QVariantMap GameLogicBridge::applyMove(const QVariantList& rawGrid, int row, int
     result.insert("hasMoves", move.hasMoves);
     result.insert("selection", toSelectionMap(move.group));
     result.insert("grid", toVariantGrid(move.grid));
+    return result;
+}
+
+QVariantMap GameLogicBridge::planMove(const QVariantList& rawGrid, int row, int col, int minimumGroupSize) const {
+    const auto move = GameRules::planMove(toGameGrid(rawGrid), row, col, minimumGroupSize);
+
+    QVariantMap result;
+    result.insert("valid", move.valid);
+    result.insert("removedCount", move.removedCount);
+    result.insert("hasMoves", move.hasMoves);
+    result.insert("selection", toSelectionMap(move.group));
+    result.insert("afterRemovalGrid", toVariantGrid(move.afterRemovalGrid));
+    result.insert("afterFallGrid", toVariantGrid(move.afterFallGrid));
+    result.insert("afterShiftGrid", toVariantGrid(move.afterShiftGrid));
+    result.insert("fallMotions", toMotions(move.fallMotions));
+    result.insert("shiftMotions", toMotions(move.shiftMotions));
     return result;
 }
 
