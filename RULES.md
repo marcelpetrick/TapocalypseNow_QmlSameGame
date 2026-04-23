@@ -1,193 +1,225 @@
 # Tapocalypse Rules
 
-This file explains the rules of **Tapocalypse**.
+This file is the source of truth for Tapocalypse gameplay semantics.
 
-It has two jobs:
+Its purpose is to make the game:
 
-- be easy enough for a **10-year-old**
-- be clear enough that programmers can build the **same game logic every time**
+- easy to understand
+- precise enough that different implementations produce the same result
 
-## 1. What Kind of Game Is This?
+If UI text, animations, or README wording disagree with this file, this file wins.
 
-Tapocalypse is a **SameGame-style** puzzle game.
+## 1. Scope
 
-That means:
+This file defines:
 
-- you click groups of matching tiles
-- the whole group disappears
-- tiles above fall down
-- empty columns slide left
+- board structure
+- connectivity and group rules
+- legal and illegal clicks
+- score calculation
+- board collapse behavior
+- end-of-game conditions
+- highscore admission rules
+- gameplay invariants
 
-Important:
+This file does not define:
 
-- some old SameGame versions allow removing groups of **2**
-- **Tapocalypse does not**
-- in Tapocalypse, a legal group must have **3 or more** tiles
+- visual theme
+- animation style or timing
+- sound effects
+- button placement
+- rendering technology
 
-So this game is **SameGame-inspired**, but with a strict **3-or-more rule**.
+Those are presentation details and must not change gameplay outcomes.
 
-## 2. The Goal
+## 2. Definitions
 
-Get the **highest score you can** before there are **no legal moves left**.
+- A **board** is a rectangular grid with `rows` and `cols`.
+- A **cell** is one position on the board.
+- A cell contains either:
+  - one colored tile
+  - or empty
+- Coordinates are zero-based.
+- The top-left cell is `(row=0, col=0)`.
+- Row numbers increase downward.
+- Column numbers increase to the right.
+- Two tiles **match** only if they have exactly the same color.
+- Two tiles are **adjacent** only if they touch up, down, left, or right.
+- Diagonal contact does not count as adjacency.
+- A **group** is the full set of same-colored tiles connected through adjacency.
 
-## 3. The Board
+## 3. Fixed Parameters
 
-- The board is a grid with `rows` and `cols`.
-- Each cell contains either:
-  - a colored tile
-  - or nothing (an empty cell)
-- The top-left cell is row `0`, column `0`.
-- Row numbers go **downward**.
-- Column numbers go **to the right**.
+The current game rules use these fixed values:
 
-## 4. Colors
+- `minimumGroupSize = 3`
+- `scoreForGroup(N) = N * N`
+- `highscoreLimit = 10`
+- `maxPlayerNameLength = 20`
 
-- A tile has one color.
-- Two tiles only match if they have the **exact same color**.
+If the product changes any of these values, this file must be updated.
 
-## 5. What Counts as Connected?
+## 4. Goal
 
-Two tiles are connected only if they touch:
+The goal is to finish the game with the highest score possible.
 
-- up
-- down
-- left
-- right
+## 5. Legal Move Rule
 
-Diagonal touching does **not** count.
+A click is legal only if the clicked tile belongs to a group whose size is at least `minimumGroupSize`.
 
-## 6. What Is a Group?
-
-A **group** is all tiles that:
-
-- have the same color
-- are connected by up/down/left/right steps
-
-This is important:
-
-- if one red tile touches another red tile, and that one touches another red tile, they are all in the **same group**
-- a group can bend or snake around
-- you never remove just part of a connected group
-
-## 7. When a Click Is Legal
-
-A click is legal only if the clicked tile belongs to a group of size **3 or more**.
-
-That means:
+With the current parameters:
 
 - size `1` group: illegal
 - size `2` group: illegal
 - size `3+` group: legal
 
-If the click is illegal:
+If a click is illegal:
 
 - no tiles are removed
 - score does not change
-- move counter does not change
+- move count does not change
+- the board state does not change
 
-## 8. What Happens on a Legal Click
+## 6. Move Resolution
 
-When the player clicks a legal tile:
+When the player makes a legal click, the game must resolve the move in this order:
 
-1. Find the full connected group of matching tiles.
-2. Remove **all** tiles in that group.
-3. Add score.
-4. Increase move count by `1`.
+1. Find the full connected group of the clicked tile.
+2. Remove all tiles in that group.
+3. Add score using `scoreForGroup(groupSize)`.
+4. Increase the move count by `1`.
 5. Collapse the board.
-6. Check whether any legal move is left.
+6. Check whether any legal move remains.
+7. If no legal move remains, transition to game over.
 
-## 9. Scoring
+Only the full connected group may be removed. Partial removal of a group is always a bug.
 
-If the removed group size is `N`, the player scores:
+## 7. Scoring
 
-`N × N`
+If a removed group has size `N`, the score added for that move is:
+
+`N * N`
 
 Examples:
 
-- `3` tiles = `9` points
-- `4` tiles = `16` points
-- `5` tiles = `25` points
+- `3` tiles -> `9` points
+- `4` tiles -> `16` points
+- `5` tiles -> `25` points
 
 There is currently:
 
 - no combo multiplier
 - no chain bonus
-- no bonus for clearing the whole board
+- no board-clear bonus
 - no penalty for leftover tiles
 
-## 10. Collapse Rules
+## 8. Collapse Rules
 
-Collapse always happens in exactly **two steps**.
+After every legal move, collapse must happen in exactly two phases.
 
-### Step 1: Fall Down
+### Phase 1: Fall Down
 
-Inside each column:
+Each column is processed independently.
 
-- all non-empty tiles fall straight down
-- their left/right order does not change
-- empty cells end up at the top of that column
+For each column:
 
-There must never be a tile with an empty cell directly below it after this step.
+- all non-empty tiles fall straight downward
+- the vertical order of those non-empty tiles is preserved
+- empty cells end up above the remaining tiles
 
-### Step 2: Shift Left
+After this phase, there must not be any tile with an empty cell directly below it.
+
+### Phase 2: Shift Left
 
 After all columns have finished falling:
 
-- every completely empty column is removed from the middle
-- all non-empty columns slide left
-- the order of non-empty columns stays the same
+- every completely empty column is removed from the used play area
+- all non-empty columns shift left
+- the left-to-right order of non-empty columns is preserved
 
-After this step:
+After this phase:
 
-- there must be no empty column between two non-empty columns
-- empty columns, if any, may exist only at the far right
+- there must be no empty column between non-empty columns
+- any remaining empty columns may exist only at the far right
 
-## 11. Reproducible Board Rule
+## 9. Reference Collapse Algorithm
 
-To make implementations consistent, the board after a move must be the same as if you do this:
+The board after a legal move must be identical to the board produced by this reference procedure:
 
-1. Look at each original column from bottom to top.
-2. Keep only the non-empty tiles from that column.
-3. Write those kept tiles back from bottom upward.
-4. Skip columns that became fully empty.
-5. Pack the remaining non-empty columns leftward in their original order.
-6. Fill all remaining cells with empty.
+1. Start with the board after removal.
+2. For each original column, read tiles from bottom to top.
+3. Keep only non-empty tiles from that column.
+4. Write those kept tiles back into the same column from bottom upward.
+5. Discard any column that became fully empty.
+6. Pack the remaining non-empty columns leftward in their original order.
+7. Fill every remaining unused cell with empty.
 
-That is the expected reference behavior.
+This is the normative collapse behavior.
 
-## 12. When the Game Ends
+## 10. End Condition
 
-The game ends when there is **no group of 3 or more** anywhere on the board.
+The game ends when no legal move exists anywhere on the board.
 
-The board may still contain tiles.
-The game is over because none of those tiles belong to a legal group anymore.
+With the current parameters, that means:
 
-## 13. Highscores
+- the board contains no group of size `3` or greater
 
-When the game ends:
+The board may still contain tiles when the game ends.
 
-- the final score may enter the highscore table
-- only the best **10** scores are kept
-- if two scores are equal, the **older** one stays ahead
+## 11. Game State
 
-Player names:
+The gameplay state machine should be interpreted as follows:
 
-- are trimmed
-- are limited to `20` characters
+- `playing`: the board accepts clicks and legal moves may be resolved
+- `gameOver`: no legal moves remain; the board must not accept further gameplay moves
+- `submittingHighscore`: the run has ended and the player may enter a qualifying score
 
-## 14. Things That Must Never Happen
+Required behavior:
 
-These are bugs:
+- the board must not mutate after game over except through explicit game reset or new game flow
+- one finished run may be submitted at most once
+- a new game starts a fresh run with score `0` and move count `0`
 
-- removing only part of a connected group
-- counting diagonal neighbors as connected
-- allowing a group of `2`
-- leaving a tile floating above an empty cell after collapse
-- leaving an empty column between non-empty columns
-- changing the order of tiles within a column during falling
-- changing the order of non-empty columns during left shift
+Animations may delay presentation, but must not change the logical result of a move.
 
-## 15. Small Example
+## 12. Highscore Rules
+
+When a run ends, its final score may be considered for the highscore table.
+
+The current highscore rules are:
+
+- only the best `10` scores are kept
+- higher scores rank ahead of lower scores
+- if two scores are equal, the older stored entry stays ahead of the newer entry
+- player names are trimmed
+- player names are limited to `20` characters after trimming
+
+Admission rules:
+
+- if fewer than `10` scores exist, any positive final score qualifies
+- if `10` scores already exist, a new score qualifies only if it is strictly greater than the current lowest stored score
+- equal-to-lowest scores do not qualify
+- a score of `0` does not qualify
+- an unfinished or aborted run does not qualify unless the product explicitly adds an abandon-and-submit rule
+
+## 13. Invariants
+
+The following must always be true in a correct implementation:
+
+- only orthogonal adjacency counts
+- diagonal touching never counts as connected
+- a legal click removes the whole connected group, not part of it
+- a group smaller than `minimumGroupSize` is never removable
+- illegal clicks never change score, move count, or board state
+- after collapse, no tile floats above an empty cell
+- after collapse, no empty column exists between non-empty columns
+- the order of tiles within a column is preserved during falling
+- the order of non-empty columns is preserved during left shift
+- the same finished run cannot be submitted multiple times
+
+## 14. Worked Examples
+
+### Example A: Legal Group of 3
 
 Start board:
 
@@ -197,7 +229,7 @@ R G B
 Y G B
 ```
 
-If the player clicks a blue tile:
+If the player clicks any blue tile:
 
 - the blue group size is `3`
 - the move is legal
@@ -219,8 +251,6 @@ R G .
 Y G .
 ```
 
-Nothing moves down here because every remaining tile already has support.
-
 After shift-left:
 
 ```text
@@ -229,15 +259,49 @@ R G
 Y G
 ```
 
-The empty right column is gone from the used play area.
+### Example B: Illegal Group of 2
 
-## 16. Simple Version
+Start board:
 
-If you want the short version:
+```text
+R B G
+Y B G
+R Y R
+```
 
-- click a group of **3 or more**
-- remove the **whole group**
-- score = **group size squared**
-- tiles fall **down**
-- empty columns slide **left**
-- game ends when no group of **3 or more** is left
+If the player clicks a blue tile:
+
+- the blue group size is `2`
+- the move is illegal
+- no tiles are removed
+- score does not change
+- moves do not change
+- the board stays exactly the same
+
+### Example C: Tiles Remain But Game Is Over
+
+Start board:
+
+```text
+R G B
+Y R G
+B Y R
+```
+
+Every tile is isolated.
+
+That means:
+
+- no group of size `3` or greater exists
+- the game is over even though tiles remain on the board
+
+## 15. Summary
+
+Short version:
+
+- click a group of `3` or more matching tiles
+- remove the whole connected group
+- gain `N * N` points for a group of size `N`
+- tiles fall down
+- empty columns shift left
+- the game ends when no legal move remains
