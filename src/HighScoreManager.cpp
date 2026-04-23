@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -10,7 +11,15 @@
 
 HighScoreManager::HighScoreManager(QObject* parent) : QObject(parent) { loadFromDisk(); }
 
+HighScoreManager::HighScoreManager(const QString& storageFilePath, QObject* parent) : QObject(parent), m_storageFilePath(storageFilePath) { loadFromDisk(); }
+
 QString HighScoreManager::filePath() const {
+    if (!m_storageFilePath.isEmpty()) {
+        const QFileInfo fileInfo(m_storageFilePath);
+        QDir().mkpath(fileInfo.absolutePath());
+        return m_storageFilePath;
+    }
+
     const auto dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(dir);
     return dir + "/highscores.json";

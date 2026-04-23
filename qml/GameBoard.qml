@@ -134,6 +134,7 @@ Item {
     }
 
     function finishMovePhases() {
+        const stillHasMoves = phaseHasMoves;
         grid = pendingMovePlan.valid ? pendingMovePlan.afterShiftGrid : grid;
         clearSelections();
         clearPhaseState();
@@ -142,7 +143,7 @@ Item {
         pendingRow = -1;
         pendingCol = -1;
         busy = false;
-        if (!phaseHasMoves) {
+        if (!stillHasMoves) {
             console.log("[GameBoard] no more moves -> game over, score:", score);
             gameOver = true;
             gameEnded(score);

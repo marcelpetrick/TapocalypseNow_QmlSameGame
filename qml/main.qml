@@ -121,7 +121,9 @@ ApplicationWindow {
             height: width / aspect
             rows: root.gridRows
             cols: root.gridCols
-            onGameEnded: scoreDialog.consider(score)
+            onGameEnded: function(finalScore) {
+                scoreDialog.consider(finalScore);
+            }
         }
 
         layer.effect: MultiEffect {
@@ -139,6 +141,7 @@ ApplicationWindow {
         id: scoreDialog
 
         anchors.centerIn: parent
+        highScoreService: highScoreManager
     }
 
 }

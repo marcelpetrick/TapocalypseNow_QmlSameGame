@@ -1,6 +1,9 @@
 #include <QCoreApplication>
+#include <QFile>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QtTest>
+#include <memory>
 
 #include "HighScoreManager.h"
 
@@ -13,22 +16,16 @@ class HighScoreManagerTest : public QObject {
     void qualifies_requiresPositiveScore();
     void qualifies_requiresStrictlyBetterThanLowestStoredScore();
     void submitScore_trimsCapsAndPersistsValidEntries();
+
+   private:
+    std::unique_ptr<QTemporaryDir> m_tempDir;
+
+    HighScoreManager createManager() const;
+    QString storageFilePath() const;
 };
 
-void HighScoreManagerTest::initTestCase() {
-    QStandardPaths::setTestModeEnabled(true);
-    QCoreApplication::setOrganizationName("TapocalypseNowTests");
-    QCoreApplication::setApplicationName("HighScoreManagerTests");
-}
-
-void HighScoreManagerTest::init() {
-    QCoreApplication::setApplicationName(QStringLiteral("HighScoreManagerTests_%1").arg(QString::fromLatin1(QTest::currentTestFunction())));
-    HighScoreManager manager;
-    manager.resetScores();
-}
-
 void HighScoreManagerTest::qualifies_requiresPositiveScore() {
-    HighScoreManager manager;
+    HighScoreManager manager = createManager();
 
     QVERIFY(!manager.qualifies(0));
     QVERIFY(!manager.qualifies(-5));
@@ -36,7 +33,7 @@ void HighScoreManagerTest::qualifies_requiresPositiveScore() {
 }
 
 void HighScoreManagerTest::qualifies_requiresStrictlyBetterThanLowestStoredScore() {
-    HighScoreManager manager;
+    HighScoreManager manager = createManager();
     for (int index = 1; index <= 10; ++index) {
         manager.submitScore(QStringLiteral("P%1").arg(index), index * 10);
     }
@@ -46,8 +43,10 @@ void HighScoreManagerTest::qualifies_requiresStrictlyBetterThanLowestStoredScore
     QVERIFY(manager.qualifies(11));
 }
 
+void HighScoreManagerTest::init() { QFile::remove(storageFilePath()); }
+
 void HighScoreManagerTest::submitScore_trimsCapsAndPersistsValidEntries() {
-    HighScoreManager manager;
+    HighScoreManager manager = createManager();
 
     manager.submitScore("   This name is definitely too long   ", 0);
     QCOMPARE(manager.loadScores().size(), 0);
@@ -59,6 +58,18 @@ void HighScoreManagerTest::submitScore_trimsCapsAndPersistsValidEntries() {
     const auto first = scores.first().toMap();
     QCOMPARE(first.value("score").toInt(), 42);
     QCOMPARE(first.value("name").toString(), QStringLiteral("This name is definit"));
+}
+
+HighScoreManager HighScoreManagerTest::createManager() const { return HighScoreManager(storageFilePath()); }
+
+QString HighScoreManagerTest::storageFilePath() const { return m_tempDir->path() + QStringLiteral("/highscores.json"); }
+
+void HighScoreManagerTest::initTestCase() {
+    QStandardPaths::setTestModeEnabled(true);
+    QCoreApplication::setOrganizationName("TapocalypseNowTests");
+    QCoreApplication::setApplicationName("HighScoreManagerTests");
+    m_tempDir = std::make_unique<QTemporaryDir>();
+    QVERIFY(m_tempDir->isValid());
 }
 
 QTEST_APPLESS_MAIN(HighScoreManagerTest)

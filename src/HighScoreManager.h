@@ -15,6 +15,7 @@ class HighScoreManager : public QObject {
     Q_OBJECT
    public:
     explicit HighScoreManager(QObject* parent = nullptr);
+    explicit HighScoreManager(const QString& storageFilePath, QObject* parent = nullptr);
 
     Q_INVOKABLE QVariantList loadScores();
     Q_INVOKABLE bool qualifies(int score) const;  // top 10 list
@@ -26,6 +27,7 @@ class HighScoreManager : public QObject {
     void loadFromDisk();
     void saveToDisk() const;
 
+    QString m_storageFilePath;
     QVector<HighScoreEntry> m_scores;  // sorted desc by score
     static constexpr int kMaxEntries = 10;
 };

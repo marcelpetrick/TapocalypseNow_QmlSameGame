@@ -7,11 +7,12 @@ Popup {
 
     property int candidateScore: 0
     property bool browsing: false
+    property var highScoreService: null
 
     function consider(score) {
         candidateScore = score;
         browsing = false;
-        if (highScoreManager.qualifies(score))
+        if (highScoreService && highScoreService.qualifies(score))
             open();
         else
             openForBrowsing();
@@ -86,10 +87,10 @@ Popup {
                     if (nameField.text.length === 0)
                         return ;
 
-                    highScoreManager.submitScore(nameField.text, candidateScore);
+                    highScoreService.submitScore(nameField.text, candidateScore);
                     browsing = true;
                     candidateScore = 0;
-                    scoresView.model = highScoreManager.loadScores();
+                    scoresView.model = highScoreService.loadScores();
                 }
             }
 
@@ -102,7 +103,7 @@ Popup {
             Layout.fillWidth: true
             Layout.preferredHeight: 300
             clip: true
-            model: highScoreManager.loadScores()
+            model: highScoreService ? highScoreService.loadScores() : []
 
             delegate: Rectangle {
                 height: 34
