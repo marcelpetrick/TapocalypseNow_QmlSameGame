@@ -14,6 +14,7 @@ Item {
     property int moves: 0
     property bool gameOver: false
     property bool busy: false // block clicks while animating
+    property int minimumGroupSize: 3
     // Internal model: -1 empty; >=0 color index
     property var grid: []
     // Selection maps for tile-level animations
@@ -56,6 +57,22 @@ Item {
         });
     }
 
+    function cloneGrid(sourceGrid) {
+        return sourceGrid.map((row) => {
+            return row.slice();
+        });
+    }
+
+    function makeEmptyGrid() {
+        let newGrid = [];
+        for (let r = 0; r < rows; ++r) {
+            let row = new Array(cols);
+            row.fill(-1);
+            newGrid.push(row);
+        }
+        return newGrid;
+    }
+
     // ---- game logic --------------------------------------------------------
     function reset() {
         console.log("[GameBoard] reset()");
@@ -78,14 +95,14 @@ Item {
     }
 
     function flood(r, c, color, visited) {
+        if (!inBounds(r, c))
+            return 0;
+
         const key = r + "," + c;
         if (visited[key])
             return 0;
 
         visited[key] = true;
-        if (!inBounds(r, c))
-            return 0;
-
         if (grid[r][c] !== color)
             return 0;
 
@@ -114,7 +131,7 @@ Item {
         };
         const size = flood(r, c, color, visited);
         console.log("[GameBoard] click r:", r, "c:", c, "color:", color, "size:", size);
-        if (size < 2) {
+        if (size < minimumGroupSize) {
             // INVALID -> shake this single tile
             shakeSet = ({
             });
@@ -134,9 +151,7 @@ Item {
     // Execute the actual removal + collapse after pop preview
     function doRemoveAndCollapse(selection) {
         // Work on a copy, then reassign to notify
-        let g = grid.map((row) => {
-            return row.slice();
-        });
+        let g = cloneGrid(grid);
         // remove selected
         let removedCount = 0;
         for (let key in selection) {
@@ -163,57 +178,43 @@ Item {
 
     function collapse() {
         console.log("[GameBoard] collapse()");
-        let g = grid.map((row) => {
-            return row.slice();
-        });
-        // drop down
+        const sourceGrid = cloneGrid(grid);
+        let collapsedGrid = makeEmptyGrid();
+        let targetColumn = 0;
         for (let c = 0; c < cols; ++c) {
-            let write = rows - 1;
+            let compactedColumn = [];
             for (let r = rows - 1; r >= 0; --r) {
-                if (g[r][c] !== -1) {
-                    if (write !== r)
-                        g[write][c] = g[r][c];
+                if (sourceGrid[r][c] !== -1)
+                    compactedColumn.push(sourceGrid[r][c]);
 
-                    write--;
-                }
             }
-            for (let r = write; r >= 0; --r) g[r][c] = -1
+            if (compactedColumn.length === 0)
+                continue;
+
+            for (let i = 0; i < compactedColumn.length; ++i) collapsedGrid[rows - 1 - i][targetColumn] = compactedColumn[i]
+            targetColumn++;
         }
-        // shift left
-        let writeC = 0;
-        for (let c = 0; c < cols; ++c) {
-            let has = false;
-            for (let r = 0; r < rows; ++r) if (g[r][c] !== -1) {
-                has = true;
-                break;
-            }
-            if (has) {
-                if (writeC !== c) {
-                    for (let r = 0; r < rows; ++r) {
-                        g[r][writeC] = g[r][c];
-                        g[r][c] = -1;
-                    }
-                }
-                writeC++;
-            }
-        }
-        grid = g;
+        grid = collapsedGrid;
         console.log("[GameBoard] collapse() -> grid reassigned");
         rebuildDelegates(); // let tiles rebind for “drop-in” anim
         refreshGrid();
     }
 
     function hasMoves() {
+        let visited = ({
+        });
         for (let r = 0; r < rows; ++r) {
             for (let c = 0; c < cols; ++c) {
-                const col = grid[r][c];
-                if (col === -1)
+                const key = r + "," + c;
+                const color = grid[r][c];
+                if (color === -1 || visited[key] === true)
                     continue;
 
-                if (inBounds(r + 1, c) && grid[r + 1][c] === col)
-                    return true;
-
-                if (inBounds(r, c + 1) && grid[r][c + 1] === col)
+                const group = ({
+                });
+                const size = flood(r, c, color, group);
+                for (let groupKey in group) visited[groupKey] = true
+                if (size >= minimumGroupSize)
                     return true;
 
             }

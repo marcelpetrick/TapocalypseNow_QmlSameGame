@@ -35,15 +35,15 @@ Item {
     }
     // --- pop preview (valid group) -----------------------------------------
     onPopActiveChanged: {
-        if (popActive && colorIndex >= 0) {
+        if (popActive && colorIndex >= 0)
             popAnim.restart();
-        }
+
     }
     // --- shake reject (invalid) --------------------------------------------
     onShakeActiveChanged: {
-        if (shakeActive) {
+        if (shakeActive)
             shakeAnim.restart();
-        }
+
     }
 
     Rectangle {
