@@ -1,3 +1,8 @@
+/**
+ * @file main.cpp
+ * @brief Application entry point for the Tapocalypse desktop client.
+ */
+
 #include <qqml.h>
 
 #include <QGuiApplication>
@@ -7,6 +12,12 @@
 #include "GameBoardController.h"
 #include "HighScoreManager.h"
 
+/**
+ * @brief Start the Tapocalypse Qt application.
+ * @param argc Process argument count.
+ * @param argv Process argument vector.
+ * @return Qt event-loop exit code.
+ */
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
 

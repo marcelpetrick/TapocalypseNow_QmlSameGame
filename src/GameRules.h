@@ -35,7 +35,7 @@ struct GroupAnalysis {
     bool valid = false;
     /// Number of connected tiles found at the queried position.
     int groupSize = 0;
-    /// Positions that belong to the connected group.
+    /// Positions that belong to the connected group, or an empty list for invalid input.
     QVector<BoardPosition> group;
 };
 
@@ -49,9 +49,9 @@ struct MoveResult {
     int removedCount = 0;
     /// True when the resulting board still has a playable group.
     bool hasMoves = false;
-    /// Board state after removal, gravity, and column shifting.
+    /// Board state after removal, gravity, and column shifting, or the unchanged input board for invalid moves.
     GameGrid grid;
-    /// Positions that were selected for the move.
+    /// Positions that were selected for the move, even when the move is invalid.
     QVector<BoardPosition> group;
 };
 
@@ -65,17 +65,17 @@ struct MovePlan {
     int removedCount = 0;
     /// True when the fully resolved board still has a playable group.
     bool hasMoves = false;
-    /// Board immediately after removing the selected group.
+    /// Board immediately after removing the selected group, or the unchanged input board for invalid moves.
     GameGrid afterRemovalGrid;
-    /// Board after tiles have fallen vertically.
+    /// Board after tiles have fallen vertically, or the unchanged input board for invalid moves.
     GameGrid afterFallGrid;
-    /// Final board after empty columns have shifted left.
+    /// Final board after empty columns have shifted left, or the unchanged input board for invalid moves.
     GameGrid afterShiftGrid;
-    /// Positions that were selected for the move.
+    /// Positions that were selected for the move, even when the move is invalid.
     QVector<BoardPosition> group;
-    /// Tile movements required for the fall phase.
+    /// Tile movements required for the fall phase. Empty for invalid moves or when no tiles fall.
     QVector<TileMotion> fallMotions;
-    /// Tile movements required for the shift phase.
+    /// Tile movements required for the shift phase. Empty for invalid moves or when no columns shift.
     QVector<TileMotion> shiftMotions;
 };
 
@@ -95,14 +95,16 @@ class GameRules {
      * @param row Zero-based row index.
      * @param col Zero-based column index.
      * @param minimumGroupSize Minimum group size required for a valid move.
-     * @return Group membership, size, and validity for the queried position.
+     * @return Group membership, size, and validity for the queried position. Returns an invalid result with an empty
+     * group for out-of-bounds coordinates, empty cells, or non-rectangular boards.
      */
     static GroupAnalysis analyzeSelection(const GameGrid& grid, int row, int col, int minimumGroupSize);
     /**
      * @brief Find the first playable group in scan order.
      * @param grid Board to inspect.
      * @param minimumGroupSize Minimum group size required for a valid move.
-     * @return First valid selectable group, or an invalid result when none exists.
+     * @return First valid selectable group in top-to-bottom, left-to-right scan order, or an invalid result when none
+     * exists or the grid is not rectangular.
      */
     static GroupAnalysis findFirstValidSelection(const GameGrid& grid, int minimumGroupSize);
     /**
@@ -111,7 +113,8 @@ class GameRules {
      * @param row Zero-based row index.
      * @param col Zero-based column index.
      * @param minimumGroupSize Minimum group size required for a valid move.
-     * @return Final move result after removal and collapse.
+     * @return Final move result after removal and collapse. Invalid moves return @c valid == false and preserve the
+     * input board in @ref MoveResult::grid.
      */
     static MoveResult applyMove(const GameGrid& grid, int row, int col, int minimumGroupSize);
     /**
@@ -120,7 +123,8 @@ class GameRules {
      * @param row Zero-based row index.
      * @param col Zero-based column index.
      * @param minimumGroupSize Minimum group size required for a valid move.
-     * @return Intermediate grids and tile motions needed to animate the move.
+     * @return Intermediate grids and tile motions needed to animate the move. Invalid moves return @c valid == false,
+     * preserve the input board in every staged grid, and produce no motions.
      */
     static MovePlan planMove(const GameGrid& grid, int row, int col, int minimumGroupSize);
     /**
@@ -133,13 +137,15 @@ class GameRules {
     /**
      * @brief Apply gravity inside each column.
      * @param grid Source board.
-     * @return Board after non-empty cells fall downward within their columns.
+     * @return Board after non-empty cells fall downward within their columns. Non-rectangular boards are returned
+     * unchanged.
      */
     static GameGrid collapseDown(const GameGrid& grid);
     /**
      * @brief Shift non-empty columns left while preserving their order.
      * @param grid Source board.
-     * @return Board after empty columns have been removed from the left-to-right layout.
+     * @return Board after empty columns have been removed from the left-to-right layout. Non-rectangular boards are
+     * returned unchanged.
      */
     static GameGrid shiftColumnsLeft(const GameGrid& grid);
     /**
@@ -152,7 +158,7 @@ class GameRules {
      * @brief Check whether any valid move is available.
      * @param grid Board to inspect.
      * @param minimumGroupSize Minimum group size required for a valid move.
-     * @return True when at least one selectable group exists.
+     * @return True when at least one selectable group exists. Non-rectangular boards return false.
      */
     static bool hasMoves(const GameGrid& grid, int minimumGroupSize);
 

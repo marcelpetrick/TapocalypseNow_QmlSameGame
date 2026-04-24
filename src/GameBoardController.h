@@ -12,6 +12,10 @@
  *
  * The controller owns the authoritative board state exposed to QML. Rendering remains in QML,
  * while move resolution, hint timing, and animation staging stay testable here.
+ *
+ * QML-facing board data uses nested row-major @c QVariantList values with integer cell contents. Empty cells use
+ * @ref GameRules::kEmptyCell. Selection maps use keys in the form @c "row,col" with boolean @c true values. Motion
+ * lists contain maps with @c color, @c fromRow, @c fromCol, @c toRow, @c toCol, and @c duration fields.
  */
 class GameBoardController : public QObject {
     Q_OBJECT
@@ -71,19 +75,20 @@ class GameBoardController : public QObject {
     /// @return True while an animation or staged move resolution is active.
     bool busy() const;
 
-    /// @return Board cells as a nested QVariantList for QML consumption.
+    /// @return Board cells as a nested row-major QVariantList for QML consumption. Empty cells use @ref GameRules::kEmptyCell.
     QVariantList grid() const;
-    /// @return Lookup map for tiles currently in the pop-preview phase.
+    /// @return Lookup map for tiles currently in the pop-preview phase, keyed by @c "row,col".
     QVariantMap popSet() const;
-    /// @return Lookup map for tiles currently shaking after an invalid selection.
+    /// @return Lookup map for tiles currently shaking after an invalid selection, keyed by @c "row,col".
     QVariantMap shakeSet() const;
-    /// @return Lookup map for tiles hidden because an animated proxy tile is in flight.
+    /// @return Lookup map for tiles hidden because an animated proxy tile is in flight, keyed by @c "row,col".
     QVariantMap hiddenSet() const;
-    /// @return Animated tile descriptors for active fall or shift phases.
+    /// @return Animated tile descriptors for active fall or shift phases. Items contain @c color, @c fromRow,
+    /// @c fromCol, @c toRow, @c toCol, and @c duration.
     QVariantList movingTiles() const;
-    /// @return Lookup map for tiles highlighted by the idle hint cycle.
+    /// @return Lookup map for tiles highlighted by the idle hint cycle, keyed by @c "row,col".
     QVariantMap hintSet() const;
-    /// @return Monotonic pulse value used to restart hint animations in QML.
+    /// @return Monotonic pulse value incremented whenever a new idle hint flash is triggered.
     int hintPulseEpoch() const;
 
     /**
@@ -94,22 +99,33 @@ class GameBoardController : public QObject {
 
     /**
      * @brief Start a new game using the configured dimensions.
+     *
+     * Resets score, moves, pending animation state, and hint state before creating a fresh playable board. If no
+     * playable board can be built, the controller ends in game-over state.
      */
     Q_INVOKABLE void reset();
     /**
      * @brief Attempt to remove the group at one board position.
      * @param row Zero-based row index.
      * @param col Zero-based column index.
+     *
+     * Out-of-bounds clicks, clicks on empty cells, clicks during game over, and clicks while a staged move is already
+     * running are ignored. Invalid groups trigger shake feedback for the clicked tile. Valid groups start the
+     * asynchronous staged move resolution managed by this controller.
      */
     Q_INVOKABLE void removeGroup(int row, int col);
     /**
      * @brief Notify the controller about a user interaction that should reset idle hints.
+     *
+     * This restarts the idle-hint delay timer so the hint cycle waits for the next inactivity period.
      */
     Q_INVOKABLE void registerUserAction();
 
     /**
      * @brief Replace the current board state directly for tests.
      * @param grid Grid to install as the active board.
+     *
+     * Test support API. This bypasses normal random board creation and resets score, move, timer, and phase state.
      */
     void setGridForTesting(const GameGrid& grid);
     /**
@@ -119,12 +135,16 @@ class GameBoardController : public QObject {
      * @param fallAnimMs Duration of the fall animation phase.
      * @param shiftAnimMs Duration of the column shift animation phase.
      * @param shakeClearMs Delay before invalid-selection shake markers are cleared.
+     *
+     * Test support API.
      */
     void setAnimationTimingsForTesting(int removePreviewMs, int removeHoldMs, int fallAnimMs, int shiftAnimMs, int shakeClearMs);
     /**
      * @brief Override idle hint timings for tests.
      * @param idleHintMs Delay before the first idle hint flash starts.
      * @param hintRepeatMs Delay between repeated hint flashes.
+     *
+     * Test support API.
      */
     void setHintTimingsForTesting(int idleHintMs, int hintRepeatMs);
 
@@ -160,6 +180,8 @@ class GameBoardController : public QObject {
     /**
      * @brief Emitted when the board reaches a terminal no-moves state.
      * @param score Final score for the completed game.
+     *
+     * This is emitted after a resolved move leaves no remaining legal move on the board.
      */
     void gameEnded(int score);
 

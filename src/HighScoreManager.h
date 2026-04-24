@@ -1,4 +1,5 @@
 #pragma once
+
 #include <QDateTime>
 #include <QObject>
 #include <QString>
@@ -6,7 +7,9 @@
 #include <QVector>
 
 /**
- * @brief One persisted high-score entry.
+ * @brief One persisted high-score entry stored internally by the manager.
+ *
+ * The public @ref HighScoreManager::loadScores API converts @ref when into an ISO-8601 string for QML consumers.
  */
 struct HighScoreEntry {
     /// Display name associated with the score.
@@ -19,6 +22,9 @@ struct HighScoreEntry {
 
 /**
  * @brief Maintains the persisted top-ten scoreboard.
+ *
+ * Scores are stored as JSON, ordered by descending score and then ascending timestamp, and truncated to the best
+ * @c 10 entries.
  */
 class HighScoreManager : public QObject {
     Q_OBJECT
@@ -37,23 +43,30 @@ class HighScoreManager : public QObject {
 
     /**
      * @brief Load the current scoreboard as QML-friendly maps.
-     * @return Variant list of high-score entries sorted from highest to lowest score.
+     * @return Variant list of maps with keys @c name, @c score, and @c when. Entries are sorted from highest to
+     * lowest score, with older timestamps winning ties. The @c when value is returned as an ISO-8601 string.
      */
     Q_INVOKABLE QVariantList loadScores();
     /**
      * @brief Check whether a score would enter the top-ten list.
      * @param score Candidate score.
-     * @return True when the score is positive and ranks above the current cutoff.
+     * @return True when the score is positive and either fewer than ten scores are stored or the score is strictly
+     * greater than the current lowest stored score.
      */
     Q_INVOKABLE bool qualifies(int score) const;
     /**
      * @brief Insert one score and persist the updated scoreboard.
      * @param name Player name. The stored value is trimmed and length-limited.
      * @param score Score to record. Non-positive scores are ignored.
+     *
+     * After insertion the list is sorted by descending score, then by ascending timestamp, truncated to the best ten
+     * entries, and written to disk.
      */
     Q_INVOKABLE void submitScore(const QString& name, int score);
     /**
      * @brief Remove every stored score and persist the empty list.
+     *
+     * This clears both the in-memory table and the persisted JSON file contents.
      */
     Q_INVOKABLE void resetScores();
 
