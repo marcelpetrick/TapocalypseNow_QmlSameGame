@@ -1,19 +1,20 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <qqml.h>
 
-#include "GameLogicBridge.h"
+#include "GameBoardController.h"
 #include "HighScoreManager.h"
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
 
+    qmlRegisterType<GameBoardController>("SameGame", 1, 0, "GameBoardController");
+
     QQmlApplicationEngine engine;
 
     HighScoreManager hsManager;
-    GameLogicBridge gameLogic;
     engine.rootContext()->setContextProperty("highScoreManager", &hsManager);
-    engine.rootContext()->setContextProperty("gameLogic", &gameLogic);
 
     const QUrl url(QStringLiteral("qrc:/SameGame/qml/main.qml"));
     QObject::connect(

@@ -13,6 +13,8 @@ qt_standard_project_setup()
 
 # App
 qt_add_executable(SameGame
+    src/GameBoardController.cpp
+    src/GameBoardController.h
     src/GameLogicBridge.cpp
     src/GameLogicBridge.h
     src/GameRules.cpp
@@ -70,6 +72,25 @@ if(BUILD_TESTING)
     target_include_directories(GameRulesTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
     add_test(NAME GameRulesTests COMMAND GameRulesTests)
+
+    qt_add_executable(GameBoardControllerTests
+        src/GameBoardController.cpp
+        src/GameBoardController.h
+        src/GameRules.cpp
+        src/GameRules.h
+        tests/test_gameboardcontroller.cpp
+    )
+
+    target_link_libraries(GameBoardControllerTests
+        PRIVATE
+            Qt6::Core
+            Qt6::Qml
+            Qt6::Test
+    )
+
+    target_include_directories(GameBoardControllerTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+    add_test(NAME GameBoardControllerTests COMMAND GameBoardControllerTests)
 
     qt_add_executable(HighScoreManagerTests
         src/HighScoreManager.cpp
