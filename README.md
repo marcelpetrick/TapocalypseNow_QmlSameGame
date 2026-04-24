@@ -1,12 +1,12 @@
-# Tapocalypse Now — a Qt 6 / QML /C++ SameGame
+# Tapocalypse — a Qt 6 / QML / C++ puzzle game
 
-A tiny, flashy SameGame clone built with Qt 6 (Quick + QML) and C++. Working title pays homage to a certain 1979 classic.
+A tiny, flashy tile-clearing puzzle game built with Qt 6 (Quick + QML) and C++. The concept is borrowed from the classic `SameGame`.
 
-[https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame).
+The project repository is available on GitHub under the Tapocalypse sources: [https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame).
 
 ## Current state:
 
-![image](DevState_Screenshot.png)
+![image](media/DevState_Screenshot.png)
 
 ---
 
@@ -18,9 +18,9 @@ A tiny, flashy SameGame clone built with Qt 6 (Quick + QML) and C++. Working ti
 
 ---
 
-## What is SameGame?
+## What is Tapocalypse?
 
-SameGame is a classic tile-clearing puzzle: you click a tile to remove the **connected group** (4‑neighborhood) of tiles that share its color. After removal, tiles **fall down** to fill gaps; when a column is empty, columns **shift left**.
+Tapocalypse is a classic tile-clearing puzzle: you click a tile to remove the **connected group** (4-neighborhood) of tiles that share its color. After removal, tiles **fall down** to fill gaps; when a column is empty, columns **shift left**.
 
 ### Rules as implemented here
 
@@ -56,8 +56,8 @@ SameGame is a classic tile-clearing puzzle: you click a tile to remove the **con
 The project uses a single top-level `CMakeLists.txt` that:
 
 * Finds Qt components: `find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Quick Qml)`
-* Builds an app target called **`SameGame`** with output binary **`samegame`** into `build/bin/`
-* Compiles QML resources into the executable as a QML module **`SameGame 1.0`**
+* Builds an app target called **`Tapocalypse`** with output binary **`tapocalypse`** into `build/bin/`
+* Compiles QML resources into the executable as a QML module **`Tapocalypse 1.0`**
 
 ### Quick start (Linux/macOS) - auto generated, not tested; usually built with QtCreator
 
@@ -72,7 +72,7 @@ cmake -G Ninja \
 cmake --build .
 
 # run
-./bin/samegame
+./bin/tapocalypse
 ```
 
 ### Quick start (Windows, MSVC + Ninja) - auto generated, not tested
@@ -87,7 +87,7 @@ cmake -G Ninja ^
 cmake --build .
 
 REM run
-bin\samegame.exe
+bin\tapocalypse.exe
 ```
 
 > **Tip:** If you installed Qt via the Maintenance Tool, the correct `CMAKE_PREFIX_PATH` is typically the *compiler‑specific* Qt directory (e.g. `.../msvc2022_64`, `.../gcc_64`, `.../clang_64`).
@@ -166,4 +166,4 @@ GPLv3
 
 ## Credits
 
-**Tapocalypse Now** — a tiny Qt 6/QML SameGame by *Marcel PEtrick (mail@marcelpetrick.it)*.
+**Tapocalypse** — a tiny Qt 6 / QML puzzle game by *Marcel Petrick (mail@marcelpetrick.it)*.
