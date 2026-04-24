@@ -97,6 +97,22 @@ bin\tapocalypse.exe
 * Open `CMakeLists.txt` and configure a **Qt 6** kit.
 * Build and **Run** from the IDE. The QML files are embedded; no extra deploy step is needed on desktop.
 
+### Local pipeline
+
+The repository ships a `localPipeline.sh` helper that now covers the full local verification loop:
+
+* configure and build the default tree
+* run the registered CTest suite
+* configure a dedicated `build-coverage/` tree with coverage instrumentation
+* generate `build-coverage/coverage/html/index.html` plus `build-coverage/coverage/summary.json`
+* try to open the generated coverage report automatically
+
+Typical usage:
+
+```bash
+./localPipeline.sh --noRun
+```
+
 ### Install (optional)
 
 ```bash

@@ -12,17 +12,20 @@
 #   1. Configure the project with CMake
 #   2. Build the default targets in parallel
 #   3. Run CTest if the build tree contains tests
-#   4. Run discovered Qt qmllint build targets when they exist
-#   5. Run clang-format on C++ sources when clang-format is installed
-#   6. Run qmlformat on QML sources when qmlformat is installed
-#   7. Print a stage-by-stage summary
-#   8. Launch the built tapocalypse binary by default as the final interactive step
+#   4. Configure a dedicated coverage build and generate an HTML report
+#   5. Try to open the generated coverage report automatically
+#   6. Run discovered Qt qmllint build targets when they exist
+#   7. Run clang-format on C++ sources when clang-format is installed
+#   8. Run qmlformat on QML sources when qmlformat is installed
+#   9. Print a stage-by-stage summary
+#   10. Launch the built tapocalypse binary by default as the final interactive step
 #
 # Invocation:
 #   ./localPipeline.sh
 #   ./localPipeline.sh --verbose
 #   ./localPipeline.sh --noRun
 #   ./localPipeline.sh --build-dir build-debug --build-type Debug
+#   ./localPipeline.sh --coverage-build-dir build-coverage
 #   ./localPipeline.sh --generator Ninja --cmake-arg -DCMAKE_PREFIX_PATH=/path/to/Qt
 #   TAPOCALYPSE_PIPELINE_JOBS=8 ./localPipeline.sh
 # -----------------------------------------------------------------------------
@@ -33,11 +36,13 @@ set -o pipefail
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly DEFAULT_BUILD_DIR="${PROJECT_ROOT}/build"
+readonly DEFAULT_COVERAGE_BUILD_DIR="${PROJECT_ROOT}/build-coverage"
 readonly STAGE_LOG_DIR="${PROJECT_ROOT}/.localPipeline"
 
 VERBOSE=0
 NO_RUN=0
 BUILD_DIR="${DEFAULT_BUILD_DIR}"
+COVERAGE_BUILD_DIR="${DEFAULT_COVERAGE_BUILD_DIR}"
 BUILD_TYPE="Debug"
 GENERATOR=""
 
@@ -52,14 +57,20 @@ declare -a QMLLINT_TARGETS=()
 PARALLEL_JOBS=1
 CHECKSUM_COMMAND=""
 CTEST_COMMAND=""
+GCOVR_COMMAND=""
+GCOV_COMMAND=""
+PYTHON3_COMMAND=""
 
 BUILD_OK=0
 TESTS_OK=0
+COVERAGE_OK=0
+OPEN_COVERAGE_OK=0
 QMLLINT_OK=0
 CPP_FORMAT_OK=0
 CPP_FORMAT_CHANGED=0
 QML_FORMAT_OK=0
 QML_FORMAT_CHANGED=0
+COVERAGE_LINE_PERCENT=""
 
 print_usage() {
     cat <<EOF
@@ -69,6 +80,8 @@ Options:
   --verbose               Print commands and stream tool output
   --noRun                 Do not launch the game after the pipeline
   --build-dir PATH        Build directory to configure into (default: ${DEFAULT_BUILD_DIR})
+  --coverage-build-dir PATH
+                          Coverage build directory (default: ${DEFAULT_COVERAGE_BUILD_DIR})
   --build-type TYPE       CMAKE_BUILD_TYPE value (default: ${BUILD_TYPE})
   --generator NAME        CMake generator name, for example "Ninja"
   --cmake-arg ARG         Extra argument passed to the CMake configure command
@@ -222,6 +235,39 @@ resolve_ctest_command() {
     return 1
 }
 
+detect_open_command() {
+    if command -v xdg-open >/dev/null 2>&1; then
+        printf '%s\n' "xdg-open"
+        return 0
+    fi
+
+    if command -v open >/dev/null 2>&1; then
+        printf '%s\n' "open"
+        return 0
+    fi
+
+    return 1
+}
+
+extract_summary_json_number() {
+    local json_file="$1"
+    local key="$2"
+
+    "${PYTHON3_COMMAND}" - "${json_file}" "${key}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+value = payload.get(sys.argv[2])
+if value is None:
+    raise SystemExit(1)
+
+print(value)
+PY
+}
+
 collect_cpp_format_targets() {
     if [[ ! -d "${PROJECT_ROOT}/src" ]]; then
         return 0
@@ -310,6 +356,87 @@ configure_project() {
 build_project() {
     log "Building project with ${PARALLEL_JOBS} parallel job(s)."
     run_command "Running project build" cmake --build "${BUILD_DIR}" --parallel "${PARALLEL_JOBS}"
+}
+
+configure_coverage_project() {
+    local -a cmd=(cmake -S "${PROJECT_ROOT}" -B "${COVERAGE_BUILD_DIR}" -DCMAKE_BUILD_TYPE=Debug -DTAPOCALYPSE_ENABLE_COVERAGE=ON)
+
+    if [[ -n "${GENERATOR}" ]]; then
+        cmd+=(-G "${GENERATOR}")
+    fi
+
+    if [[ "${#CMAKE_CONFIGURE_ARGS[@]}" -gt 0 ]]; then
+        cmd+=("${CMAKE_CONFIGURE_ARGS[@]}")
+    fi
+
+    log "Configuring dedicated coverage build in '${COVERAGE_BUILD_DIR}'."
+    mkdir -p "${COVERAGE_BUILD_DIR}" || return 1
+
+    run_command "Running CMake coverage configure step" "${cmd[@]}"
+}
+
+build_coverage_project() {
+    log "Building coverage configuration with ${PARALLEL_JOBS} parallel job(s)."
+    run_command "Running coverage build" cmake --build "${COVERAGE_BUILD_DIR}" --parallel "${PARALLEL_JOBS}"
+}
+
+generate_coverage_report() {
+    local coverage_output_dir="${COVERAGE_BUILD_DIR}/coverage"
+    local coverage_html_dir="${coverage_output_dir}/html"
+    local coverage_index_file="${coverage_html_dir}/index.html"
+    local coverage_summary_file="${coverage_output_dir}/summary.json"
+    local open_command=""
+
+    log "Generating coverage report."
+    if ! run_command "Building the coverage-html target" cmake --build "${COVERAGE_BUILD_DIR}" --target coverage-html --parallel "${PARALLEL_JOBS}"; then
+        mark_result "Coverage" "FAIL" "Coverage HTML generation failed"
+        mark_result "Coverage Gate" "SKIP" "Skipped because coverage generation failed"
+        mark_result "Open Coverage" "SKIP" "Skipped because coverage generation failed"
+        return 1
+    fi
+
+    if [[ ! -f "${coverage_index_file}" ]]; then
+        mark_result "Coverage" "FAIL" "Missing ${coverage_index_file}"
+        mark_result "Coverage Gate" "SKIP" "Skipped because coverage generation failed"
+        mark_result "Open Coverage" "SKIP" "Skipped because coverage generation failed"
+        return 1
+    fi
+
+    if [[ ! -f "${coverage_summary_file}" ]]; then
+        mark_result "Coverage" "FAIL" "Missing ${coverage_summary_file}"
+        mark_result "Coverage Gate" "SKIP" "Skipped because coverage generation failed"
+        mark_result "Open Coverage" "SKIP" "Skipped because coverage generation failed"
+        return 1
+    fi
+
+    COVERAGE_LINE_PERCENT="$(extract_summary_json_number "${coverage_summary_file}" "line_percent" 2>/dev/null || true)"
+    if [[ -z "${COVERAGE_LINE_PERCENT}" ]]; then
+        mark_result "Coverage" "FAIL" "Could not parse line_percent from summary.json"
+        mark_result "Coverage Gate" "SKIP" "Skipped because coverage generation failed"
+        mark_result "Open Coverage" "SKIP" "Skipped because coverage generation failed"
+        return 1
+    fi
+
+    log "Coverage HTML entry point: ${coverage_index_file}"
+    log "Total line coverage: ${COVERAGE_LINE_PERCENT}%"
+
+    COVERAGE_OK=1
+    mark_result "Coverage" "PASS" "Coverage HTML generated successfully in ${COVERAGE_BUILD_DIR}"
+    mark_result "Coverage Gate" "PASS" "Line coverage is ${COVERAGE_LINE_PERCENT}%"
+
+    if open_command="$(detect_open_command)"; then
+        log "Opening coverage report with '${open_command}'."
+        if run_command "Opening coverage index.html" "${open_command}" "${coverage_index_file}"; then
+            OPEN_COVERAGE_OK=1
+            mark_result "Open Coverage" "PASS" "Coverage index.html was handed to the desktop opener"
+        else
+            mark_result "Open Coverage" "WARN" "Could not open coverage index.html automatically"
+        fi
+    else
+        mark_result "Open Coverage" "SKIP" "No supported desktop opener was found"
+    fi
+
+    return 0
 }
 
 discover_qmllint_targets() {
@@ -562,6 +689,14 @@ parse_arguments() {
                 fi
                 BUILD_DIR="$1"
                 ;;
+            --coverage-build-dir)
+                shift
+                if [[ "$#" -eq 0 || "$1" = -* ]]; then
+                    error "Missing or invalid value for --coverage-build-dir."
+                    exit 2
+                fi
+                COVERAGE_BUILD_DIR="$1"
+                ;;
             --build-type)
                 shift
                 if [[ "$#" -eq 0 || "$1" = -* ]]; then
@@ -608,6 +743,7 @@ main() {
 
     log "Project root: ${PROJECT_ROOT}"
     log "Build directory: ${BUILD_DIR}"
+    log "Coverage build directory: ${COVERAGE_BUILD_DIR}"
     log "Build type: ${BUILD_TYPE}"
     if [[ -n "${GENERATOR}" ]]; then
         log "Generator: ${GENERATOR}"
@@ -617,11 +753,18 @@ main() {
     fi
 
     require_command cmake || missing_prerequisites=1
+    require_command gcovr || missing_prerequisites=1
+    require_command gcov || missing_prerequisites=1
+    require_command python3 || missing_prerequisites=1
 
     if ! CTEST_COMMAND="$(resolve_ctest_command)"; then
         warn "Could not resolve a working ctest executable. Test stage may be skipped."
         CTEST_COMMAND=""
     fi
+
+    GCOVR_COMMAND="$(command -v gcovr 2>/dev/null || true)"
+    GCOV_COMMAND="$(command -v gcov 2>/dev/null || true)"
+    PYTHON3_COMMAND="$(command -v python3 2>/dev/null || true)"
 
     if ! CHECKSUM_COMMAND="$(resolve_checksum_command)"; then
         error "Neither 'sha256sum' nor 'shasum' was found in PATH."
@@ -652,6 +795,13 @@ main() {
 
     if [[ "${BUILD_OK}" -eq 1 ]]; then
         run_tests_if_present
+        if configure_coverage_project && build_coverage_project; then
+            generate_coverage_report || true
+        else
+            mark_result "Coverage" "FAIL" "Coverage configure or build step failed"
+            mark_result "Coverage Gate" "SKIP" "Skipped because coverage generation failed"
+            mark_result "Open Coverage" "SKIP" "Skipped because coverage generation failed"
+        fi
         if run_qmllint_targets_if_present; then
             :
         fi
@@ -659,6 +809,9 @@ main() {
         run_qmlformat_if_present
     else
         mark_result "CTest" "SKIP" "Skipped because build failed"
+        mark_result "Coverage" "SKIP" "Skipped because build failed"
+        mark_result "Coverage Gate" "SKIP" "Skipped because build failed"
+        mark_result "Open Coverage" "SKIP" "Skipped because build failed"
         mark_result "QML Lint" "SKIP" "Skipped because build failed"
         mark_result "clang-format" "SKIP" "Skipped because build failed"
         mark_result "qmlformat" "SKIP" "Skipped because build failed"

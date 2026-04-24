@@ -6,10 +6,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CTest)
 
+option(TAPOCALYPSE_ENABLE_COVERAGE "Build with gcov/gcovr coverage instrumentation" OFF)
+
 # Find the Qt 6.5+ bits we actually use
 find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Quick Qml Test)
 
 qt_standard_project_setup()
+
+if(TAPOCALYPSE_ENABLE_COVERAGE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-O0 -g --coverage)
+        add_link_options(--coverage)
+    else()
+        message(FATAL_ERROR "TAPOCALYPSE_ENABLE_COVERAGE requires GCC or Clang.")
+    endif()
+endif()
 
 # App
 qt_add_executable(Tapocalypse
@@ -107,4 +118,50 @@ if(BUILD_TESTING)
     target_include_directories(HighScoreManagerTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
     add_test(NAME HighScoreManagerTests COMMAND HighScoreManagerTests)
+
+    if(TAPOCALYPSE_ENABLE_COVERAGE)
+        find_program(GCOVR_EXECUTABLE gcovr)
+        find_program(GCOV_EXECUTABLE gcov)
+
+        if(GCOVR_EXECUTABLE AND GCOV_EXECUTABLE)
+            set(TAPOCALYPSE_COVERAGE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/coverage")
+            set(TAPOCALYPSE_COVERAGE_HTML_DIR "${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/html")
+
+            add_custom_target(coverage
+                COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}
+                COMMAND ${GCOVR_EXECUTABLE}
+                    --root ${CMAKE_SOURCE_DIR}
+                    --filter ^src/
+                    --gcov-executable ${GCOV_EXECUTABLE}
+                    --object-directory ${CMAKE_BINARY_DIR}
+                    --txt ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/coverage.txt
+                    --json-summary ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/summary.json
+                    --json-summary-pretty
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                DEPENDS GameRulesTests GameBoardControllerTests HighScoreManagerTests
+                USES_TERMINAL
+                COMMENT "Running tests and generating text/json coverage report"
+            )
+
+            add_custom_target(coverage-html
+                COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${TAPOCALYPSE_COVERAGE_HTML_DIR}
+                COMMAND ${GCOVR_EXECUTABLE}
+                    --root ${CMAKE_SOURCE_DIR}
+                    --filter ^src/
+                    --gcov-executable ${GCOV_EXECUTABLE}
+                    --object-directory ${CMAKE_BINARY_DIR}
+                    --html-details ${TAPOCALYPSE_COVERAGE_HTML_DIR}/index.html
+                    --json-summary ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/summary.json
+                    --json-summary-pretty
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                DEPENDS GameRulesTests GameBoardControllerTests HighScoreManagerTests
+                USES_TERMINAL
+                COMMENT "Running tests and generating HTML coverage report"
+            )
+        else()
+            message(STATUS "Coverage targets disabled: gcovr and gcov are required.")
+        endif()
+    endif()
 endif()
