@@ -1,6 +1,8 @@
 #include <QtTest>
 
+#define private public
 #include "GameRules.h"
+#undef private
 
 namespace {
 
@@ -24,8 +26,10 @@ class GameRulesTest : public QObject {
 
    private slots:
     void analyzeSelection_requiresAtLeastThree();
+    void functions_handleEmptyAndIrregularInput();
     void findFirstValidSelection_returnsAPlayableGroup();
     void applyMove_removesWholeConnectedGroup();
+    void applyMove_andPlanMove_preserveBoardForInvalidSelections();
     void collapse_dropsTilesBeforeShiftingColumnsLeft();
     void collapse_keepsNonEmptyColumnOrderStable();
     void hasMoves_usesThreeTileThreshold();
@@ -46,6 +50,50 @@ void GameRulesTest::analyzeSelection_requiresAtLeastThree() {
     const auto tripleAnalysis = GameRules::analyzeSelection(grid, 0, 2, 3);
     QCOMPARE(tripleAnalysis.groupSize, 3);
     QVERIFY(tripleAnalysis.valid);
+}
+
+void GameRulesTest::functions_handleEmptyAndIrregularInput() {
+    const GameGrid emptyGrid;
+    const auto emptyAnalysis = GameRules::analyzeSelection(emptyGrid, 0, 0, 3);
+    QVERIFY(!emptyAnalysis.valid);
+    QCOMPARE(emptyAnalysis.groupSize, 0);
+    QVERIFY(GameRules::collectGroup(emptyGrid, 0, 0).isEmpty());
+
+    const auto emptyFirst = GameRules::findFirstValidSelection(emptyGrid, 3);
+    QVERIFY(!emptyFirst.valid);
+    QCOMPARE(GameRules::collapseDown(emptyGrid), emptyGrid);
+    QCOMPARE(GameRules::shiftColumnsLeft(emptyGrid), emptyGrid);
+
+    const auto irregularGrid = makeGrid({
+        {0, 1},
+        {2},
+    });
+    QVERIFY(!GameRules::hasMoves(irregularGrid, 3));
+    QVERIFY(GameRules::collectGroup(irregularGrid, 0, 0).isEmpty());
+    QCOMPARE(GameRules::collapseDown(irregularGrid), irregularGrid);
+    QCOMPARE(GameRules::shiftColumnsLeft(irregularGrid), irregularGrid);
+
+    const auto emptyCellGrid = makeGrid({
+        {-1, 1},
+        {2, 3},
+    });
+    QVERIFY(GameRules::collectGroup(emptyCellGrid, 0, 0).isEmpty());
+    QVERIFY(GameRules::collectGroup(emptyCellGrid, -1, 0).isEmpty());
+
+    const auto removed = GameRules::removeGroup(makeGrid({
+                                                    {1, 2},
+                                                    {3, 4},
+                                                }),
+                                                {{0, 0}, {9, 9}});
+    QCOMPARE(removed, makeGrid({
+                         {-1, 2},
+                         {3, 4},
+                     }));
+
+    QVERIFY(GameRules::buildFallMotions(emptyGrid, emptyGrid).isEmpty());
+    QVERIFY(GameRules::buildFallMotions(irregularGrid, irregularGrid).isEmpty());
+    QVERIFY(GameRules::buildShiftMotions(emptyGrid, emptyGrid).isEmpty());
+    QVERIFY(GameRules::buildShiftMotions(irregularGrid, irregularGrid).isEmpty());
 }
 
 void GameRulesTest::findFirstValidSelection_returnsAPlayableGroup() {
@@ -81,6 +129,30 @@ void GameRulesTest::applyMove_removesWholeConnectedGroup() {
                               {4, 1, 5, 3},
                               {4, 6, 5, 7},
                           }));
+}
+
+void GameRulesTest::applyMove_andPlanMove_preserveBoardForInvalidSelections() {
+    const auto grid = makeGrid({
+        {0, 0, 1},
+        {2, 3, 1},
+        {4, 5, 6},
+    });
+
+    const auto move = GameRules::applyMove(grid, 0, 0, 3);
+    QVERIFY(!move.valid);
+    QCOMPARE(move.removedCount, 0);
+    QCOMPARE(move.grid, grid);
+    QVERIFY(!move.hasMoves);
+
+    const auto plan = GameRules::planMove(grid, 0, 0, 3);
+    QVERIFY(!plan.valid);
+    QCOMPARE(plan.removedCount, 0);
+    QCOMPARE(plan.afterRemovalGrid, grid);
+    QCOMPARE(plan.afterFallGrid, grid);
+    QCOMPARE(plan.afterShiftGrid, grid);
+    QVERIFY(plan.fallMotions.isEmpty());
+    QVERIFY(plan.shiftMotions.isEmpty());
+    QVERIFY(!plan.hasMoves);
 }
 
 void GameRulesTest::collapse_dropsTilesBeforeShiftingColumnsLeft() {

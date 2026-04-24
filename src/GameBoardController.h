@@ -7,6 +7,12 @@
 
 #include "GameRules.h"
 
+/**
+ * @brief Stateful controller that orchestrates board state, animation phases, and idle hints.
+ *
+ * The controller owns the authoritative board state exposed to QML. Rendering remains in QML,
+ * while move resolution, hint timing, and animation staging stay testable here.
+ */
 class GameBoardController : public QObject {
     Q_OBJECT
 
@@ -26,55 +32,135 @@ class GameBoardController : public QObject {
     Q_PROPERTY(int hintPulseEpoch READ hintPulseEpoch NOTIFY hintPulseEpochChanged)
 
    public:
+    /**
+     * @brief Create a board controller with default dimensions and timings.
+     * @param parent Owning QObject parent.
+     */
     explicit GameBoardController(QObject* parent = nullptr);
 
+    /// @return Current board row count.
     int rows() const;
+    /**
+     * @brief Set the board row count used by the next reset.
+     * @param rows New row count.
+     */
     void setRows(int rows);
 
+    /// @return Current board column count.
     int cols() const;
+    /**
+     * @brief Set the board column count used by the next reset.
+     * @param cols New column count.
+     */
     void setCols(int cols);
 
+    /// @return Minimum connected group size required for a valid move.
     int minimumGroupSize() const;
+    /**
+     * @brief Set the minimum connected group size required for a valid move.
+     * @param minimumGroupSize New move threshold.
+     */
     void setMinimumGroupSize(int minimumGroupSize);
 
+    /// @return Current accumulated score.
     int score() const;
+    /// @return Number of successful moves performed in the current game.
     int moves() const;
+    /// @return True when the current board has no valid moves left.
     bool gameOver() const;
+    /// @return True while an animation or staged move resolution is active.
     bool busy() const;
 
+    /// @return Board cells as a nested QVariantList for QML consumption.
     QVariantList grid() const;
+    /// @return Lookup map for tiles currently in the pop-preview phase.
     QVariantMap popSet() const;
+    /// @return Lookup map for tiles currently shaking after an invalid selection.
     QVariantMap shakeSet() const;
+    /// @return Lookup map for tiles hidden because an animated proxy tile is in flight.
     QVariantMap hiddenSet() const;
+    /// @return Animated tile descriptors for active fall or shift phases.
     QVariantList movingTiles() const;
+    /// @return Lookup map for tiles highlighted by the idle hint cycle.
     QVariantMap hintSet() const;
+    /// @return Monotonic pulse value used to restart hint animations in QML.
     int hintPulseEpoch() const;
 
+    /**
+     * @brief Access the authoritative native board state.
+     * @return Current board grid.
+     */
     const GameGrid& gridState() const;
 
+    /**
+     * @brief Start a new game using the configured dimensions.
+     */
     Q_INVOKABLE void reset();
+    /**
+     * @brief Attempt to remove the group at one board position.
+     * @param row Zero-based row index.
+     * @param col Zero-based column index.
+     */
     Q_INVOKABLE void removeGroup(int row, int col);
+    /**
+     * @brief Notify the controller about a user interaction that should reset idle hints.
+     */
     Q_INVOKABLE void registerUserAction();
 
+    /**
+     * @brief Replace the current board state directly for tests.
+     * @param grid Grid to install as the active board.
+     */
     void setGridForTesting(const GameGrid& grid);
+    /**
+     * @brief Override animation timings for tests.
+     * @param removePreviewMs Duration of the pop preview phase.
+     * @param removeHoldMs Duration of the hidden/removed hold phase.
+     * @param fallAnimMs Duration of the fall animation phase.
+     * @param shiftAnimMs Duration of the column shift animation phase.
+     * @param shakeClearMs Delay before invalid-selection shake markers are cleared.
+     */
     void setAnimationTimingsForTesting(int removePreviewMs, int removeHoldMs, int fallAnimMs, int shiftAnimMs, int shakeClearMs);
+    /**
+     * @brief Override idle hint timings for tests.
+     * @param idleHintMs Delay before the first idle hint flash starts.
+     * @param hintRepeatMs Delay between repeated hint flashes.
+     */
     void setHintTimingsForTesting(int idleHintMs, int hintRepeatMs);
 
    signals:
+    /// Emitted when the configured row count changes.
     void rowsChanged();
+    /// Emitted when the configured column count changes.
     void colsChanged();
+    /// Emitted when the minimum valid group size changes.
     void minimumGroupSizeChanged();
+    /// Emitted when the score changes.
     void scoreChanged();
+    /// Emitted when the move count changes.
     void movesChanged();
+    /// Emitted when the game-over state changes.
     void gameOverChanged();
+    /// Emitted when the busy state changes.
     void busyChanged();
+    /// Emitted when the exposed grid changes.
     void gridChanged();
+    /// Emitted when the pop-preview selection changes.
     void popSetChanged();
+    /// Emitted when the invalid-selection shake markers change.
     void shakeSetChanged();
+    /// Emitted when the hidden tile map changes.
     void hiddenSetChanged();
+    /// Emitted when animated tile descriptors change.
     void movingTilesChanged();
+    /// Emitted when the idle hint selection changes.
     void hintSetChanged();
+    /// Emitted when the idle hint pulse epoch increments.
     void hintPulseEpochChanged();
+    /**
+     * @brief Emitted when the board reaches a terminal no-moves state.
+     * @param score Final score for the completed game.
+     */
     void gameEnded(int score);
 
    private:
@@ -116,6 +202,7 @@ class GameBoardController : public QObject {
     GameGrid buildPlayableGrid() const;
     bool inBounds(int row, int col) const;
 
+   private slots:
     void onRemovePreviewTimer();
     void onRemoveHoldTimer();
     void onFallTimer();
@@ -124,6 +211,7 @@ class GameBoardController : public QObject {
     void onIdleHintTimer();
     void onHintRepeatTimer();
 
+   private:
     int m_rows = 10;
     int m_cols = 16;
     int m_minimumGroupSize = 3;

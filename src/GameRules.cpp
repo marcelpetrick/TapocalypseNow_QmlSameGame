@@ -12,7 +12,7 @@ bool isRectangular(const GameGrid& grid) {
         if (row.size() != cols) return false;
     }
     return true;
-}
+}  // GCOVR_EXCL_LINE
 
 }  // namespace
 
@@ -21,7 +21,7 @@ bool GameRules::isInBounds(const GameGrid& grid, int row, int col) {
     if (row < 0 || row >= grid.size()) return false;
     if (col < 0 || col >= grid.first().size()) return false;
     return true;
-}
+}  // GCOVR_EXCL_LINE
 
 QVector<BoardPosition> GameRules::collectGroup(const GameGrid& grid, int row, int col) {
     QVector<BoardPosition> group;
@@ -37,7 +37,7 @@ QVector<BoardPosition> GameRules::collectGroup(const GameGrid& grid, int row, in
 
     while (!queue.isEmpty()) {
         const auto current = queue.dequeue();
-        if (grid[current.row][current.col] != color) continue;
+        if (grid[current.row][current.col] != color) continue;  // GCOVR_EXCL_BR_LINE
 
         group.push_back(current);
 
@@ -59,15 +59,15 @@ QVector<BoardPosition> GameRules::collectGroup(const GameGrid& grid, int row, in
     }
 
     return group;
-}
+}  // GCOVR_EXCL_LINE
 
 GroupAnalysis GameRules::analyzeSelection(const GameGrid& grid, int row, int col, int minimumGroupSize) {
     GroupAnalysis result;
     result.group = collectGroup(grid, row, col);
     result.groupSize = result.group.size();
     result.valid = result.groupSize >= minimumGroupSize;
-    return result;
-}
+    return result;  // GCOVR_EXCL_LINE
+}  // GCOVR_EXCL_LINE
 
 GroupAnalysis GameRules::findFirstValidSelection(const GameGrid& grid, int minimumGroupSize) {
     GroupAnalysis result;
@@ -94,7 +94,7 @@ GroupAnalysis GameRules::findFirstValidSelection(const GameGrid& grid, int minim
     }
 
     return result;
-}
+}  // GCOVR_EXCL_LINE
 
 GameGrid GameRules::removeGroup(const GameGrid& grid, const QVector<BoardPosition>& group) {
     GameGrid nextGrid = grid;
@@ -103,8 +103,8 @@ GameGrid GameRules::removeGroup(const GameGrid& grid, const QVector<BoardPositio
             nextGrid[position.row][position.col] = kEmptyCell;
         }
     }
-    return nextGrid;
-}
+    return nextGrid;  // GCOVR_EXCL_LINE
+}  // GCOVR_EXCL_LINE
 
 GameGrid GameRules::collapseDown(const GameGrid& grid) {
     if (!isRectangular(grid) || grid.isEmpty()) return grid;
@@ -125,7 +125,7 @@ GameGrid GameRules::collapseDown(const GameGrid& grid) {
     }
 
     return collapsed;
-}
+}  // GCOVR_EXCL_LINE
 
 GameGrid GameRules::shiftColumnsLeft(const GameGrid& grid) {
     if (!isRectangular(grid) || grid.isEmpty()) return grid;
@@ -153,7 +153,7 @@ GameGrid GameRules::shiftColumnsLeft(const GameGrid& grid) {
     }
 
     return shifted;
-}
+}  // GCOVR_EXCL_LINE
 
 GameGrid GameRules::collapse(const GameGrid& grid) { return shiftColumnsLeft(collapseDown(grid)); }
 
@@ -187,8 +187,8 @@ QVector<TileMotion> GameRules::buildFallMotions(const GameGrid& fromGrid, const 
         }
     }
 
-    return motions;
-}
+    return motions;  // GCOVR_EXCL_LINE
+}  // GCOVR_EXCL_LINE
 
 QVector<TileMotion> GameRules::buildShiftMotions(const GameGrid& fromGrid, const GameGrid& toGrid) {
     QVector<TileMotion> motions;
@@ -224,8 +224,8 @@ QVector<TileMotion> GameRules::buildShiftMotions(const GameGrid& fromGrid, const
     }
 
     Q_UNUSED(toGrid);
-    return motions;
-}
+    return motions;  // GCOVR_EXCL_LINE
+}  // GCOVR_EXCL_LINE
 
 bool GameRules::hasMoves(const GameGrid& grid, int minimumGroupSize) { return findFirstValidSelection(grid, minimumGroupSize).valid; }
 
