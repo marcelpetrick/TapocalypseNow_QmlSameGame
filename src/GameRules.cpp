@@ -69,6 +69,33 @@ GroupAnalysis GameRules::analyzeSelection(const GameGrid& grid, int row, int col
     return result;
 }
 
+GroupAnalysis GameRules::findFirstValidSelection(const GameGrid& grid, int minimumGroupSize) {
+    GroupAnalysis result;
+    if (!isRectangular(grid) || grid.isEmpty()) return result;
+
+    QVector<QVector<bool>> visited(grid.size(), QVector<bool>(grid.first().size(), false));
+
+    for (int row = 0; row < grid.size(); ++row) {
+        for (int col = 0; col < grid.first().size(); ++col) {
+            if (visited[row][col] || grid[row][col] == kEmptyCell) continue;
+
+            const auto group = collectGroup(grid, row, col);
+            for (const auto& position : group) {
+                visited[position.row][position.col] = true;
+            }
+
+            if (group.size() < minimumGroupSize) continue;
+
+            result.valid = true;
+            result.groupSize = group.size();
+            result.group = group;
+            return result;
+        }
+    }
+
+    return result;
+}
+
 GameGrid GameRules::removeGroup(const GameGrid& grid, const QVector<BoardPosition>& group) {
     GameGrid nextGrid = grid;
     for (const auto& position : group) {
@@ -200,26 +227,7 @@ QVector<TileMotion> GameRules::buildShiftMotions(const GameGrid& fromGrid, const
     return motions;
 }
 
-bool GameRules::hasMoves(const GameGrid& grid, int minimumGroupSize) {
-    if (!isRectangular(grid) || grid.isEmpty()) return false;
-
-    QVector<QVector<bool>> visited(grid.size(), QVector<bool>(grid.first().size(), false));
-
-    for (int row = 0; row < grid.size(); ++row) {
-        for (int col = 0; col < grid.first().size(); ++col) {
-            if (visited[row][col] || grid[row][col] == kEmptyCell) continue;
-
-            const auto group = collectGroup(grid, row, col);
-            for (const auto& position : group) {
-                visited[position.row][position.col] = true;
-            }
-
-            if (group.size() >= minimumGroupSize) return true;
-        }
-    }
-
-    return false;
-}
+bool GameRules::hasMoves(const GameGrid& grid, int minimumGroupSize) { return findFirstValidSelection(grid, minimumGroupSize).valid; }
 
 MoveResult GameRules::applyMove(const GameGrid& grid, int row, int col, int minimumGroupSize) {
     MoveResult result;

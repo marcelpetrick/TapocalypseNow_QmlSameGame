@@ -76,6 +76,16 @@ QVariantMap GameLogicBridge::analyzeSelection(const QVariantList& rawGrid, int r
     return result;
 }
 
+QVariantMap GameLogicBridge::findFirstValidSelection(const QVariantList& rawGrid, int minimumGroupSize) const {
+    const auto analysis = GameRules::findFirstValidSelection(toGameGrid(rawGrid), minimumGroupSize);
+
+    QVariantMap result;
+    result.insert("valid", analysis.valid);
+    result.insert("groupSize", analysis.groupSize);
+    result.insert("selection", toSelectionMap(analysis.group));
+    return result;
+}
+
 QVariantMap GameLogicBridge::applyMove(const QVariantList& rawGrid, int row, int col, int minimumGroupSize) const {
     const auto move = GameRules::applyMove(toGameGrid(rawGrid), row, col, minimumGroupSize);
 

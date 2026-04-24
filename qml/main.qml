@@ -16,6 +16,11 @@ ApplicationWindow {
     title: "SameGame — Neon"
     color: "#07080F" // deep space
 
+    TapHandler {
+        acceptedButtons: Qt.AllButtons
+        onTapped: game.registerUserAction()
+    }
+
     // Futuristic neon header
     Rectangle {
         id: header
@@ -80,6 +85,7 @@ ApplicationWindow {
         Button {
             text: "New Game"
             onClicked: {
+                game.registerUserAction();
                 console.log("[Main] New Game clicked");
                 game.reset();
             }
@@ -87,12 +93,18 @@ ApplicationWindow {
 
         Button {
             text: "Highscores"
-            onClicked: scoreDialog.openForBrowsing()
+            onClicked: {
+                game.registerUserAction();
+                scoreDialog.openForBrowsing();
+            }
         }
 
         Button {
             text: "Reset Highscores"
-            onClicked: highScoreManager.resetScores()
+            onClicked: {
+                game.registerUserAction();
+                highScoreManager.resetScores();
+            }
         }
 
     }

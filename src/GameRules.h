@@ -46,6 +46,7 @@ class GameRules {
     static constexpr int kEmptyCell = -1;
 
     static GroupAnalysis analyzeSelection(const GameGrid& grid, int row, int col, int minimumGroupSize);
+    static GroupAnalysis findFirstValidSelection(const GameGrid& grid, int minimumGroupSize);
     static MoveResult applyMove(const GameGrid& grid, int row, int col, int minimumGroupSize);
     static MovePlan planMove(const GameGrid& grid, int row, int col, int minimumGroupSize);
     static GameGrid removeGroup(const GameGrid& grid, const QVector<BoardPosition>& group);

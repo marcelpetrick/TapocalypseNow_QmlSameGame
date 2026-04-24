@@ -40,6 +40,9 @@ Item {
     property var movingTiles: []
     property var pendingMovePlan: ({
     })
+    property var hintSet: ({
+    })
+    property int hintPulseEpoch: 0
 
     signal gameEnded(int score)
 
@@ -67,6 +70,8 @@ Item {
         popSet = ({
         });
         shakeSet = ({
+        });
+        hintSet = ({
         });
     }
 
@@ -147,7 +152,42 @@ Item {
             console.log("[GameBoard] no more moves -> game over, score:", score);
             gameOver = true;
             gameEnded(score);
+            return ;
         }
+        restartHintIdleTimer();
+    }
+
+    function stopHintCycle() {
+        idleHintTimer.stop();
+        hintRepeatTimer.stop();
+        hintSet = ({
+        });
+    }
+
+    function restartHintIdleTimer() {
+        stopHintCycle();
+        if (busy || gameOver || !gameLogic.hasMoves(grid, minimumGroupSize))
+            return ;
+
+        idleHintTimer.restart();
+    }
+
+    function triggerHintFlash() {
+        if (busy || gameOver)
+            return false;
+
+        const hint = gameLogic.findFirstValidSelection(grid, minimumGroupSize);
+        if (!hint.valid) {
+            stopHintCycle();
+            return false;
+        }
+        hintSet = hint.selection;
+        hintPulseEpoch += 1;
+        return true;
+    }
+
+    function registerUserAction() {
+        restartHintIdleTimer();
     }
 
     // ---- game logic --------------------------------------------------------
@@ -179,6 +219,7 @@ Item {
         gameOver = !gameLogic.hasMoves(grid, minimumGroupSize);
         console.log("[GameBoard] reset() -> grid assigned, size:", rows, "x", cols, "attempts:", attempts);
         refreshGrid();
+        restartHintIdleTimer();
     }
 
     function removeGroup(r, c) {
@@ -189,6 +230,7 @@ Item {
             console.log("[GameBoard] click ignored: game over");
             return ;
         }
+        registerUserAction();
         if (busy) {
             console.log("[GameBoard] click ignored: busy");
             return ;
@@ -299,6 +341,30 @@ Item {
         }
     }
 
+    Timer {
+        id: idleHintTimer
+
+        interval: 3000
+        repeat: false
+        onTriggered: {
+            if (board.triggerHintFlash())
+                hintRepeatTimer.restart();
+
+        }
+    }
+
+    Timer {
+        id: hintRepeatTimer
+
+        interval: 2000
+        repeat: true
+        onTriggered: {
+            if (!board.triggerHintFlash())
+                stop();
+
+        }
+    }
+
     // ---- view --------------------------------------------------------------
     Item {
         id: tileView
@@ -325,6 +391,8 @@ Item {
                 // animation flags from board maps
                 popActive: board.popSet[r + "," + c] === true
                 shakeActive: board.shakeSet[r + "," + c] === true
+                hintActive: board.hintSet[r + "," + c] === true
+                hintPulseEpoch: board.hintPulseEpoch
                 onClicked: {
                     console.log("[Tile] clicked r:", r, "c:", c, "color:", colorIndex);
                     board.removeGroup(r, c);

@@ -14,6 +14,8 @@ Item {
     // animation triggers from GameBoard
     property bool popActive: false
     property bool shakeActive: false
+    property bool hintActive: false
+    property int hintPulseEpoch: 0
     // safe color (also used for effects)
     readonly property color selectedColor: (colorIndex >= 0 && palette.length > 0 && colorIndex < palette.length) ? palette[colorIndex] : "#222532"
     // track previous index to detect spawn after collapse
@@ -46,6 +48,11 @@ Item {
     onShakeActiveChanged: {
         if (shakeActive)
             shakeAnim.restart();
+
+    }
+    onHintPulseEpochChanged: {
+        if (hintActive && colorIndex >= 0)
+            hintGlow.restart();
 
     }
 
@@ -127,6 +134,18 @@ Item {
         visible: tile.visible
     }
 
+    Rectangle {
+        id: hintRipple
+
+        anchors.centerIn: parent
+        width: 0
+        height: 0
+        radius: width / 2
+        color: selectedColor
+        opacity: 0
+        visible: tile.visible && tile.hintActive
+    }
+
     SequentialAnimation {
         id: hoverGlow
 
@@ -156,6 +175,78 @@ Item {
             property: "opacity"
             to: 0
             duration: 200
+        }
+
+    }
+
+    SequentialAnimation {
+        id: hintGlow
+
+        running: false
+        onStarted: {
+            hintRipple.width = 0;
+            hintRipple.height = 0;
+            hintRipple.opacity = 0.24;
+        }
+        onFinished: {
+            hintRipple.width = 0;
+            hintRipple.height = 0;
+            hintRipple.opacity = 0;
+        }
+
+        ParallelAnimation {
+            SequentialAnimation {
+                PropertyAnimation {
+                    target: hintRipple
+                    property: "width"
+                    to: tile.width * 1.2
+                    duration: 500
+                    easing.type: Easing.OutQuad
+                }
+
+                PauseAnimation {
+                    duration: 500
+                }
+
+            }
+
+            SequentialAnimation {
+                PropertyAnimation {
+                    target: hintRipple
+                    property: "height"
+                    to: tile.height * 1.2
+                    duration: 500
+                    easing.type: Easing.OutQuad
+                }
+
+                PauseAnimation {
+                    duration: 500
+                }
+
+            }
+
+            SequentialAnimation {
+                PauseAnimation {
+                    duration: 120
+                }
+
+                PropertyAnimation {
+                    target: hintRipple
+                    property: "opacity"
+                    to: 0.34
+                    duration: 180
+                }
+
+                PropertyAnimation {
+                    target: hintRipple
+                    property: "opacity"
+                    to: 0
+                    duration: 700
+                    easing.type: Easing.InQuad
+                }
+
+            }
+
         }
 
     }

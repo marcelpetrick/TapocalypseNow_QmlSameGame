@@ -24,6 +24,7 @@ class GameRulesTest : public QObject {
 
    private slots:
     void analyzeSelection_requiresAtLeastThree();
+    void findFirstValidSelection_returnsAPlayableGroup();
     void applyMove_removesWholeConnectedGroup();
     void collapse_dropsTilesBeforeShiftingColumnsLeft();
     void collapse_keepsNonEmptyColumnOrderStable();
@@ -45,6 +46,21 @@ void GameRulesTest::analyzeSelection_requiresAtLeastThree() {
     const auto tripleAnalysis = GameRules::analyzeSelection(grid, 0, 2, 3);
     QCOMPARE(tripleAnalysis.groupSize, 3);
     QVERIFY(tripleAnalysis.valid);
+}
+
+void GameRulesTest::findFirstValidSelection_returnsAPlayableGroup() {
+    const auto grid = makeGrid({
+        {0, 1, 1, 2},
+        {3, 1, 4, 5},
+        {6, 7, 8, 8},
+    });
+
+    const auto analysis = GameRules::findFirstValidSelection(grid, 3);
+
+    QVERIFY(analysis.valid);
+    QCOMPARE(analysis.groupSize, 3);
+    QCOMPARE(analysis.group[0].row, 0);
+    QCOMPARE(analysis.group[0].col, 1);
 }
 
 void GameRulesTest::applyMove_removesWholeConnectedGroup() {
