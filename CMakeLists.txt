@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(SameGameQt6 LANGUAGES CXX)
+project(Tapocalypse LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,7 +12,7 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Quick Qml Test)
 qt_standard_project_setup()
 
 # App
-qt_add_executable(SameGame
+qt_add_executable(Tapocalypse
     src/GameBoardController.cpp
     src/GameBoardController.h
     src/GameLogicBridge.cpp
@@ -25,8 +25,8 @@ qt_add_executable(SameGame
 )
 
 # QML module (resources get compiled into the app)
-qt_add_qml_module(SameGame
-    URI SameGame
+qt_add_qml_module(Tapocalypse
+    URI Tapocalypse
     VERSION 1.0
     QML_FILES
         qml/main.qml
@@ -36,22 +36,22 @@ qt_add_qml_module(SameGame
 )
 
 # Link the Qt libs needed by QGuiApplication, QML, and Quick
-target_link_libraries(SameGame
+target_link_libraries(Tapocalypse
     PRIVATE
         Qt6::Gui
         Qt6::Qml
         Qt6::Quick
 )
 
-target_include_directories(SameGame PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(Tapocalypse PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Put runtime in bin/ and use a lowercase binary name to avoid clashes
-set_target_properties(SameGame PROPERTIES
-    OUTPUT_NAME samegame
+set_target_properties(Tapocalypse PROPERTIES
+    OUTPUT_NAME tapocalypse
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
-install(TARGETS SameGame
+install(TARGETS Tapocalypse
     BUNDLE DESTINATION .
     RUNTIME DESTINATION .
 )

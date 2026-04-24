@@ -4,7 +4,7 @@
 # localPipeline.sh
 #
 # Purpose:
-#   Run a local developer pipeline for this SameGame Qt/QML project:
+#   Run a local developer pipeline for this Tapocalypse Qt/QML project:
 #   configure, build, run any discovered project tooling, and then launch
 #   the game as the final interactive step.
 #
@@ -16,7 +16,7 @@
 #   5. Run clang-format on C++ sources when clang-format is installed
 #   6. Run qmlformat on QML sources when qmlformat is installed
 #   7. Print a stage-by-stage summary
-#   8. Launch the built samegame binary by default as the final interactive step
+#   8. Launch the built tapocalypse binary by default as the final interactive step
 #
 # Invocation:
 #   ./localPipeline.sh
@@ -24,7 +24,7 @@
 #   ./localPipeline.sh --noRun
 #   ./localPipeline.sh --build-dir build-debug --build-type Debug
 #   ./localPipeline.sh --generator Ninja --cmake-arg -DCMAKE_PREFIX_PATH=/path/to/Qt
-#   SAMEGAME_PIPELINE_JOBS=8 ./localPipeline.sh
+#   TAPOCALYPSE_PIPELINE_JOBS=8 ./localPipeline.sh
 # -----------------------------------------------------------------------------
 
 set -u
@@ -75,7 +75,7 @@ Options:
   --help, -h              Show this help text
 
 Environment:
-  SAMEGAME_PIPELINE_JOBS  Positive integer override for parallel build/test jobs
+  TAPOCALYPSE_PIPELINE_JOBS  Positive integer override for parallel build/test jobs
 
 Examples:
   ./localPipeline.sh
@@ -156,7 +156,7 @@ require_command() {
 }
 
 detect_parallel_jobs() {
-    local configured_jobs="${SAMEGAME_PIPELINE_JOBS:-}"
+    local configured_jobs="${TAPOCALYPSE_PIPELINE_JOBS:-}"
     local detected_jobs=""
 
     if [[ -n "${configured_jobs}" ]]; then
@@ -165,7 +165,7 @@ detect_parallel_jobs() {
             return 0
         fi
 
-        error "SAMEGAME_PIPELINE_JOBS must be a positive integer, got '${configured_jobs}'."
+        error "TAPOCALYPSE_PIPELINE_JOBS must be a positive integer, got '${configured_jobs}'."
         return 1
     fi
 
@@ -500,14 +500,14 @@ run_qmlformat_if_present() {
 }
 
 find_application_path() {
-    local candidate="${BUILD_DIR}/bin/samegame"
+    local candidate="${BUILD_DIR}/bin/tapocalypse"
 
     if [[ -x "${candidate}" ]]; then
         printf '%s\n' "${candidate}"
         return 0
     fi
 
-    candidate="$(find "${BUILD_DIR}" -type f -perm -111 \( -name 'samegame' -o -name 'samegame.exe' \) | head -n 1)"
+    candidate="$(find "${BUILD_DIR}" -type f -perm -111 \( -name 'tapocalypse' -o -name 'tapocalypse.exe' \) | head -n 1)"
     if [[ -n "${candidate}" ]]; then
         printf '%s\n' "${candidate}"
         return 0
@@ -524,11 +524,11 @@ launch_application() {
         return 1
     fi
 
-    log "Launching samegame as the final pipeline step."
+    log "Launching tapocalypse as the final pipeline step."
     log "Close the game window to let the script finish."
 
-    if run_command "Launching the SameGame application" "${app_path}"; then
-        mark_result "Launch App" "PASS" "samegame started and the script resumed after it exited"
+    if run_command "Launching the Tapocalypse application" "${app_path}"; then
+        mark_result "Launch App" "PASS" "tapocalypse started and the script resumed after it exited"
         return 0
     fi
 

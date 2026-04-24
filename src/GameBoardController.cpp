@@ -239,9 +239,7 @@ void GameBoardController::hideMotionSources(const QVector<TileMotion>& motions) 
     setHiddenSet(nextHidden);
 }
 
-void GameBoardController::buildAnimatedTiles(const QVector<TileMotion>& motions, int durationMs) {
-    setMovingTiles(toMotions(motions, durationMs));
-}
+void GameBoardController::buildAnimatedTiles(const QVector<TileMotion>& motions, int durationMs) { setMovingTiles(toMotions(motions, durationMs)); }
 
 void GameBoardController::startResolvedMove() {
     const auto move = GameRules::planMove(m_gridState, m_pendingRow, m_pendingCol, m_minimumGroupSize);

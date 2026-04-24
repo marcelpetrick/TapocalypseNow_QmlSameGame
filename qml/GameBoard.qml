@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import SameGame 1.0
+import Tapocalypse 1.0
 
 Item {
     id: board
@@ -31,6 +31,8 @@ Item {
         controller.registerUserAction();
     }
 
+    Component.onCompleted: Qt.callLater(controller.reset)
+
     GameBoardController {
         id: controller
 
@@ -41,8 +43,6 @@ Item {
             board.gameEnded(finalScore);
         }
     }
-
-    Component.onCompleted: Qt.callLater(controller.reset)
 
     Item {
         id: tileView
@@ -73,6 +73,7 @@ Item {
                     controller.removeGroup(r, c);
                 }
             }
+
         }
 
         Repeater {
@@ -96,6 +97,9 @@ Item {
                     y = modelData.toRow * pitch;
                 }
             }
+
         }
+
     }
+
 }

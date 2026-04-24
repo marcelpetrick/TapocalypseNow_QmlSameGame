@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
-import SameGame 1.0
+import Tapocalypse 1.0
 
 ApplicationWindow {
     id: root
@@ -13,7 +13,7 @@ ApplicationWindow {
     width: 1920
     height: 1080
     visible: true
-    title: "SameGame — Neon"
+    title: "Tapocalypse"
     color: "#07080F" // deep space
 
     TapHandler {
