@@ -13,12 +13,13 @@
 #   2. Build the default targets in parallel
 #   3. Run CTest if the build tree contains tests
 #   4. Configure a dedicated coverage build and generate an HTML report
-#   5. Try to open the generated coverage report automatically
-#   6. Run discovered Qt qmllint build targets when they exist
-#   7. Run clang-format on C++ sources when clang-format is installed
-#   8. Run qmlformat on QML sources when qmlformat is installed
-#   9. Print a stage-by-stage summary
-#   10. Launch the built tapocalypse binary by default as the final interactive step
+#   5. Generate Doxygen HTML documentation and verify the warning log
+#   6. Try to open the generated coverage and Doxygen reports automatically
+#   7. Run discovered Qt qmllint build targets when they exist
+#   8. Run clang-format on C++ sources when clang-format is installed
+#   9. Run qmlformat on QML sources when qmlformat is installed
+#   10. Print a stage-by-stage summary
+#   11. Launch the built tapocalypse binary by default as the final interactive step
 #
 # Invocation:
 #   ./localPipeline.sh
@@ -37,12 +38,14 @@ readonly SCRIPT_NAME="$(basename "$0")"
 readonly PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly DEFAULT_BUILD_DIR="${PROJECT_ROOT}/build"
 readonly DEFAULT_COVERAGE_BUILD_DIR="${PROJECT_ROOT}/build-coverage"
+readonly DEFAULT_DOCS_BUILD_DIR="${PROJECT_ROOT}/build-docs"
 readonly STAGE_LOG_DIR="${PROJECT_ROOT}/.localPipeline"
 
 VERBOSE=0
 NO_RUN=0
 BUILD_DIR="${DEFAULT_BUILD_DIR}"
 COVERAGE_BUILD_DIR="${DEFAULT_COVERAGE_BUILD_DIR}"
+DOCS_BUILD_DIR="${DEFAULT_DOCS_BUILD_DIR}"
 BUILD_TYPE="Debug"
 GENERATOR=""
 
@@ -60,11 +63,15 @@ CTEST_COMMAND=""
 GCOVR_COMMAND=""
 GCOV_COMMAND=""
 PYTHON3_COMMAND=""
+DOXYGEN_COMMAND=""
 
 BUILD_OK=0
 TESTS_OK=0
 COVERAGE_OK=0
 OPEN_COVERAGE_OK=0
+DOXYGEN_OK=0
+DOXYGEN_WARNINGS_OK=0
+OPEN_DOCS_OK=0
 QMLLINT_OK=0
 CPP_FORMAT_OK=0
 CPP_FORMAT_CHANGED=0
@@ -82,6 +89,7 @@ Options:
   --build-dir PATH        Build directory to configure into (default: ${DEFAULT_BUILD_DIR})
   --coverage-build-dir PATH
                           Coverage build directory (default: ${DEFAULT_COVERAGE_BUILD_DIR})
+  --docs-build-dir PATH   Doxygen output directory (default: ${DEFAULT_DOCS_BUILD_DIR})
   --build-type TYPE       CMAKE_BUILD_TYPE value (default: ${BUILD_TYPE})
   --generator NAME        CMake generator name, for example "Ninja"
   --cmake-arg ARG         Extra argument passed to the CMake configure command
@@ -93,6 +101,7 @@ Environment:
 Examples:
   ./localPipeline.sh
   ./localPipeline.sh --noRun --build-type Release
+  ./localPipeline.sh --docs-build-dir build-docs
   ./localPipeline.sh --generator Ninja --cmake-arg -DCMAKE_PREFIX_PATH=/path/to/Qt/6.8.0/gcc_64
 EOF
 }
@@ -458,6 +467,36 @@ output_path.write_text(
 PY
 }
 
+render_doxygen_config() {
+    local template_file="$1"
+    local output_dir="$2"
+    local config_file="$3"
+
+    "${PYTHON3_COMMAND}" - "${template_file}" "${PROJECT_ROOT}" "${output_dir}" "${config_file}" <<'PY'
+import pathlib
+import sys
+
+template_path = pathlib.Path(sys.argv[1])
+project_root = pathlib.Path(sys.argv[2]).resolve()
+output_dir = pathlib.Path(sys.argv[3]).resolve()
+config_path = pathlib.Path(sys.argv[4]).resolve()
+
+content = template_path.read_text(encoding="utf-8")
+replacements = {
+    "@PROJECT_NAME@": "Tapocalypse",
+    "@PROJECT_VERSION@": "",
+    "@PROJECT_ROOT@": str(project_root),
+    "@DOXYGEN_OUTPUT_DIRECTORY@": str(output_dir),
+}
+
+for key, value in replacements.items():
+    content = content.replace(key, value)
+
+config_path.parent.mkdir(parents=True, exist_ok=True)
+config_path.write_text(content, encoding="utf-8")
+PY
+}
+
 collect_cpp_format_targets() {
     if [[ ! -d "${PROJECT_ROOT}/src" ]]; then
         return 0
@@ -568,6 +607,70 @@ configure_coverage_project() {
 build_coverage_project() {
     log "Building coverage configuration with ${PARALLEL_JOBS} parallel job(s)."
     run_command "Running coverage build" cmake --build "${COVERAGE_BUILD_DIR}" --parallel "${PARALLEL_JOBS}"
+}
+
+generate_doxygen_docs() {
+    local docs_output_dir="${DOCS_BUILD_DIR}/doxygen"
+    local docs_index_file="${docs_output_dir}/html/index.html"
+    local docs_warning_file="${docs_output_dir}/warnings.txt"
+    local docs_config_file="${STAGE_LOG_DIR}/Doxyfile.generated"
+    local open_command=""
+
+    log "Generating Doxygen documentation."
+
+    mkdir -p "${STAGE_LOG_DIR}" "${docs_output_dir}" || {
+        mark_result "Doxygen" "FAIL" "Could not create Doxygen output directories"
+        mark_result "Doxygen Warn" "SKIP" "Skipped because Doxygen generation failed"
+        mark_result "Open Docs" "SKIP" "Skipped because Doxygen generation failed"
+        return 1
+    }
+
+    if ! render_doxygen_config "${PROJECT_ROOT}/Doxyfile.in" "${docs_output_dir}" "${docs_config_file}"; then
+        mark_result "Doxygen" "FAIL" "Could not render Doxygen configuration"
+        mark_result "Doxygen Warn" "SKIP" "Skipped because Doxygen generation failed"
+        mark_result "Open Docs" "SKIP" "Skipped because Doxygen generation failed"
+        return 1
+    fi
+
+    if ! run_command "Running Doxygen" "${DOXYGEN_COMMAND}" "${docs_config_file}"; then
+        mark_result "Doxygen" "FAIL" "Doxygen execution failed"
+        mark_result "Doxygen Warn" "SKIP" "Skipped because Doxygen generation failed"
+        mark_result "Open Docs" "SKIP" "Skipped because Doxygen generation failed"
+        return 1
+    fi
+
+    if [[ ! -f "${docs_index_file}" ]]; then
+        mark_result "Doxygen" "FAIL" "Missing ${docs_index_file}"
+        mark_result "Doxygen Warn" "SKIP" "Skipped because Doxygen generation failed"
+        mark_result "Open Docs" "SKIP" "Skipped because Doxygen generation failed"
+        return 1
+    fi
+
+    DOXYGEN_OK=1
+    mark_result "Doxygen" "PASS" "HTML documentation generated in ${docs_output_dir}"
+
+    if [[ ! -f "${docs_warning_file}" ]]; then
+        mark_result "Doxygen Warn" "FAIL" "Missing ${docs_warning_file}"
+    elif [[ -s "${docs_warning_file}" ]]; then
+        mark_result "Doxygen Warn" "WARN" "Warnings were reported in ${docs_warning_file}"
+    else
+        DOXYGEN_WARNINGS_OK=1
+        mark_result "Doxygen Warn" "PASS" "No Doxygen warnings were reported"
+    fi
+
+    if open_command="$(detect_open_command)"; then
+        log "Opening Doxygen docs with '${open_command}'."
+        if run_command "Opening Doxygen index.html" "${open_command}" "${docs_index_file}"; then
+            OPEN_DOCS_OK=1
+            mark_result "Open Docs" "PASS" "Doxygen index.html was handed to the desktop opener"
+        else
+            mark_result "Open Docs" "WARN" "Could not open Doxygen index.html automatically"
+        fi
+    else
+        mark_result "Open Docs" "SKIP" "No supported desktop opener was found"
+    fi
+
+    return 0
 }
 
 generate_coverage_report() {
@@ -957,6 +1060,14 @@ parse_arguments() {
                 fi
                 COVERAGE_BUILD_DIR="$1"
                 ;;
+            --docs-build-dir)
+                shift
+                if [[ "$#" -eq 0 || "$1" = -* ]]; then
+                    error "Missing or invalid value for --docs-build-dir."
+                    exit 2
+                fi
+                DOCS_BUILD_DIR="$1"
+                ;;
             --build-type)
                 shift
                 if [[ "$#" -eq 0 || "$1" = -* ]]; then
@@ -1004,6 +1115,7 @@ main() {
     log "Project root: ${PROJECT_ROOT}"
     log "Build directory: ${BUILD_DIR}"
     log "Coverage build directory: ${COVERAGE_BUILD_DIR}"
+    log "Docs build directory: ${DOCS_BUILD_DIR}"
     log "Build type: ${BUILD_TYPE}"
     if [[ -n "${GENERATOR}" ]]; then
         log "Generator: ${GENERATOR}"
@@ -1016,6 +1128,7 @@ main() {
     require_command gcovr || missing_prerequisites=1
     require_command gcov || missing_prerequisites=1
     require_command python3 || missing_prerequisites=1
+    require_command doxygen || missing_prerequisites=1
 
     if ! CTEST_COMMAND="$(resolve_ctest_command)"; then
         warn "Could not resolve a working ctest executable. Test stage may be skipped."
@@ -1025,6 +1138,7 @@ main() {
     GCOVR_COMMAND="$(command -v gcovr 2>/dev/null || true)"
     GCOV_COMMAND="$(command -v gcov 2>/dev/null || true)"
     PYTHON3_COMMAND="$(command -v python3 2>/dev/null || true)"
+    DOXYGEN_COMMAND="$(command -v doxygen 2>/dev/null || true)"
 
     if ! CHECKSUM_COMMAND="$(resolve_checksum_command)"; then
         error "Neither 'sha256sum' nor 'shasum' was found in PATH."
@@ -1062,6 +1176,7 @@ main() {
             mark_result "Coverage Gate" "SKIP" "Skipped because coverage generation failed"
             mark_result "Open Coverage" "SKIP" "Skipped because coverage generation failed"
         fi
+        generate_doxygen_docs || true
         if run_qmllint_targets_if_present; then
             :
         fi
@@ -1072,6 +1187,9 @@ main() {
         mark_result "Coverage" "SKIP" "Skipped because build failed"
         mark_result "Coverage Gate" "SKIP" "Skipped because build failed"
         mark_result "Open Coverage" "SKIP" "Skipped because build failed"
+        mark_result "Doxygen" "SKIP" "Skipped because build failed"
+        mark_result "Doxygen Warn" "SKIP" "Skipped because build failed"
+        mark_result "Open Docs" "SKIP" "Skipped because build failed"
         mark_result "QML Lint" "SKIP" "Skipped because build failed"
         mark_result "clang-format" "SKIP" "Skipped because build failed"
         mark_result "qmlformat" "SKIP" "Skipped because build failed"

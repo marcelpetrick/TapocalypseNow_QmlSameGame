@@ -1,5 +1,6 @@
 /build/
 /build-coverage/
+/build-docs/
 /CMakeLists.txt.user
 /llm_compat_output.md
 /.localPipeline/
