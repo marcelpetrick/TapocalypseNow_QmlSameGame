@@ -5,6 +5,12 @@ Tapocalypse is a Qt 6 puzzle game built with QML for the UI and C++ for the game
 Repository:
 [https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame)
 
+**Author: Marcel Petrick <mail@marcelpetrick.it>**
+
+**Note: projected is generated with AI.**
+
+**License: GPLv3 or later. See `LICENSE`.**
+
 ## Current State
 
 ![Tapocalypse screenshot](media/DevState_Screenshot.png)
