@@ -9,6 +9,8 @@ ApplicationWindow {
     property int gridCols: 16
     property int gridRows: 10
 
+    width: 1920
+    height: 1080
     visibility: Window.FullScreen
     visible: true
     title: "Tapocalypse"
