@@ -1,4 +1,5 @@
 /build/
+/build-aarch64/
 /build-coverage/
 /build-docs/
 /CMakeLists.txt.user

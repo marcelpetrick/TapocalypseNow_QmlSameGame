@@ -8,7 +8,9 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQuickWindow>
 
+#include "FrameProfiler.h"
 #include "GameBoardController.h"
 #include "HighScoreManager.h"
 
@@ -37,6 +39,24 @@ int main(int argc, char* argv[]) {
         Qt::QueuedConnection);
 
     engine.load(url);
+
+    // Profiling is entirely opt-in so normal startup and frame handling remain
+    // unchanged unless explicitly requested by the environment.
+    if (qEnvironmentVariable("TAPOCALYPSE_PROFILE") == QStringLiteral("1")) {
+        bool durationValid = false;
+        const double autoExitSeconds =
+            qEnvironmentVariable("TAPOCALYPSE_PROFILE_SECONDS").toDouble(&durationValid);
+
+        const auto roots = engine.rootObjects();
+        if (!roots.isEmpty()) {
+            if (auto* window = qobject_cast<QQuickWindow*>(roots.constFirst())) {
+                new FrameProfiler(window, durationValid ? autoExitSeconds : 0.0);
+            } else {
+                qWarning().noquote()
+                    << "TAPOCALYPSE_FRAME error=root_is_not_qquickwindow";
+            }
+        }
+    }
 
     return app.exec();
 }

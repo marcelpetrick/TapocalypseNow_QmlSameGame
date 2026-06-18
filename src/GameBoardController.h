@@ -120,6 +120,13 @@ class GameBoardController : public QObject {
      * This restarts the idle-hint delay timer so the hint cycle waits for the next inactivity period.
      */
     Q_INVOKABLE void registerUserAction();
+    /**
+     * @brief Execute one deterministic automated benchmark action.
+     *
+     * Selects the first valid group in scan order. A finished game is reset,
+     * while calls made during an active animation are ignored.
+     */
+    Q_INVOKABLE void benchmarkStep();
 
     /**
      * @brief Replace the current board state directly for tests.

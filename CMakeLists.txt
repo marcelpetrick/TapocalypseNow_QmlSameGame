@@ -43,6 +43,8 @@ target_include_directories(TapocalypseCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/sr
 
 # App
 qt_add_executable(Tapocalypse
+    src/FrameProfiler.cpp
+    src/FrameProfiler.h
     src/main.cpp
 )
 

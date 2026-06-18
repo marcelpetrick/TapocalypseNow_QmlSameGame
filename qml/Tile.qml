@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Effects
 
 Item {
     id: tile
@@ -7,7 +6,7 @@ Item {
     property int r
     property int c
     property int colorIndex: -1 // -1 means empty cell
-    property var palette: []
+    property var colorPalette: []
     property bool interactive: true
     property bool animatePosition: false
     property int moveDuration: 260
@@ -17,11 +16,14 @@ Item {
     property bool hintActive: false
     property int hintPulseEpoch: 0
     // safe color (also used for effects)
-    readonly property color selectedColor: (colorIndex >= 0 && palette.length > 0 && colorIndex < palette.length) ? palette[colorIndex] : "#222532"
+    readonly property color selectedColor: (colorIndex >= 0 && colorPalette.length > 0 && colorIndex < colorPalette.length) ? colorPalette[colorIndex] : "#222532"
     // track previous index to detect spawn after collapse
     property int _prevIndex: -2
     // jitter for shake
     property real jitterX: 0
+    // spawn animation endpoints captured once in onColorIndexChanged
+    property real _spawnFromY: 0
+    property real _spawnToY: 0
 
     signal clicked()
 
@@ -30,9 +32,11 @@ Item {
     // --- lifecycle cues -----------------------------------------------------
     // Spawn drop-in animation when this cell becomes non-empty
     onColorIndexChanged: {
-        if (_prevIndex === -1 && colorIndex >= 0)
+        if (_prevIndex === -1 && colorIndex >= 0) {
+            _spawnFromY = y - height * 0.25;
+            _spawnToY   = y;
             spawnAnim.restart();
-
+        }
         _prevIndex = colorIndex;
     }
     Component.onCompleted: {
@@ -56,6 +60,15 @@ Item {
 
     }
 
+    // Concentric translucent geometry preserves the neon halo without forcing
+    // every tile through an offscreen layer and blur pass.
+    Rectangle {
+        anchors.fill: core
+        anchors.margins: -3
+        radius: core.radius + 3
+        color: Qt.rgba(selectedColor.r, selectedColor.g, selectedColor.b, 0.24)
+    }
+
     Rectangle {
         id: core
 
@@ -65,7 +78,6 @@ Item {
         border.color: "#1f2a6b"
         opacity: 0.98
         scale: pressedArea.pressed ? 0.94 : 1
-        layer.enabled: true
 
         // quick flash overlay for pop
         Rectangle {
@@ -97,15 +109,6 @@ Item {
                 easing.type: Easing.OutQuad
             }
 
-        }
-
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowBlur: 0.9
-            shadowOpacity: 0.9
-            shadowHorizontalOffset: 0
-            shadowVerticalOffset: 0
-            shadowColor: selectedColor
         }
 
     }
@@ -259,8 +262,8 @@ Item {
         PropertyAnimation {
             target: tile
             property: "y"
-            from: tile.y - tile.height * 0.25
-            to: tile.y
+            from: tile._spawnFromY
+            to: tile._spawnToY
             duration: 180
             easing.type: Easing.OutQuad
         }

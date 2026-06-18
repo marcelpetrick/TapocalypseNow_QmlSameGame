@@ -44,6 +44,14 @@ Item {
         }
     }
 
+    Timer {
+        interval: 25
+        repeat: true
+        running: Qt.application.arguments.indexOf("--benchmark") >= 0
+        triggeredOnStart: true
+        onTriggered: controller.benchmarkStep()
+    }
+
     Item {
         id: tileView
 
@@ -64,7 +72,7 @@ Item {
                 x: c * pitch
                 y: r * pitch
                 colorIndex: controller.hiddenSet[r + "," + c] === true ? -1 : ((controller.grid[r] !== undefined && controller.grid[r][c] !== undefined) ? controller.grid[r][c] : -1)
-                palette: board.neonPalette()
+                colorPalette: board.neonPalette()
                 popActive: controller.popSet[r + "," + c] === true
                 shakeActive: controller.shakeSet[r + "," + c] === true
                 hintActive: controller.hintSet[r + "," + c] === true
@@ -85,7 +93,7 @@ Item {
                 width: cell
                 height: cell
                 colorIndex: modelData.color
-                palette: board.neonPalette()
+                colorPalette: board.neonPalette()
                 interactive: false
                 animatePosition: true
                 moveDuration: modelData.duration

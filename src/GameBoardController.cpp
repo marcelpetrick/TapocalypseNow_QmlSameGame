@@ -380,6 +380,23 @@ void GameBoardController::removeGroup(int row, int col) {
 
 void GameBoardController::registerUserAction() { restartHintIdleTimer(); }
 
+void GameBoardController::benchmarkStep() {
+    if (m_busy) return;
+    if (m_gameOver) {
+        reset();
+        return;
+    }
+
+    const auto selection = GameRules::findFirstValidSelection(m_gridState, m_minimumGroupSize);
+    if (!selection.valid || selection.group.isEmpty()) {
+        reset();
+        return;
+    }
+
+    const auto position = selection.group.first();
+    removeGroup(position.row, position.col);
+}
+
 void GameBoardController::setGridForTesting(const GameGrid& grid) {
     cancelTimers();
     clearSelections();

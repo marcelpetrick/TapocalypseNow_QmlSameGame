@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Effects
 import QtQuick.Layouts
 import Tapocalypse 1.0
 
@@ -10,8 +9,7 @@ ApplicationWindow {
     property int gridCols: 16
     property int gridRows: 10
 
-    width: 1920
-    height: 1080
+    visibility: Window.FullScreen
     visible: true
     title: "Tapocalypse"
     color: "#07080F" // deep space
@@ -111,6 +109,13 @@ ApplicationWindow {
 
     // Board container with glow lines
     Rectangle {
+        anchors.fill: boardFrame
+        anchors.margins: -6
+        radius: boardFrame.radius + 6
+        color: "#285500ea"
+    }
+
+    Rectangle {
         id: boardFrame
 
         anchors.fill: parent
@@ -119,7 +124,6 @@ ApplicationWindow {
         color: "#0B0D19"
         border.color: "#14204F"
         border.width: 2
-        layer.enabled: true
 
         GameBoard {
             id: game
@@ -136,15 +140,6 @@ ApplicationWindow {
             onGameEnded: function(finalScore) {
                 scoreDialog.consider(finalScore);
             }
-        }
-
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowOpacity: 0.6
-            shadowBlur: 1
-            shadowVerticalOffset: 0
-            shadowHorizontalOffset: 0
-            shadowColor: "#5500ea"
         }
 
     }
