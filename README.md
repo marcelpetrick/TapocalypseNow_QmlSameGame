@@ -13,6 +13,10 @@ Repository:
 
 ## Current State
 
+Performance-improved state (for embedded SBC):
+[![Tapocalypse demo](media/typocalypse.gif)](media/typocalypse.mp4)
+
+Earlier state (but three times slower!):  
 ![Tapocalypse screenshot](media/DevState_Screenshot.png)
 
 ## Gameplay
