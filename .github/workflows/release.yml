@@ -90,8 +90,8 @@ jobs:
           fi
           kill "${pid}" || true
           cat "${log}"
-          if grep -qiE 'could not find the qt platform plugin|module .* is not installed|failed to load' "${log}"; then
-            echo "app started but reported missing runtime parts"; exit 1
+          if grep -qiE 'could not find the qt platform plugin|module .* is not installed|failed to load|does not support customization' "${log}"; then
+            echo "app started but reported missing runtime parts or an unthemed style"; exit 1
           fi
           echo "packaged app is self-contained and running"
 
