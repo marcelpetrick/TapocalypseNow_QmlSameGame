@@ -835,24 +835,10 @@ generate_coverage_report() {
 }
 
 discover_qmllint_targets() {
-    local help_output=""
-    local candidate=""
-
-    help_output="$(cmake --build "${BUILD_DIR}" --target help 2>/dev/null || true)"
-    if [[ -z "${help_output}" ]]; then
-        return 0
-    fi
-
-    while IFS= read -r candidate; do
-        case "${candidate}" in
-            all_qmllint|qmllint|*_qmllint)
-                QMLLINT_TARGETS+=("${candidate}")
-                ;;
-        esac
-    done < <(printf '%s\n' "${help_output}" | sed -n 's/^[.][.][.] //p' | sed 's/ .*//')
-
-    if [[ "${#QMLLINT_TARGETS[@]}" -gt 0 ]]; then
-        mapfile -t QMLLINT_TARGETS < <(printf '%s\n' "${QMLLINT_TARGETS[@]}" | LC_ALL=C sort -u)
+    # Qt adds 'all_qmllint' (which depends on every per-module lint target) to Ninja and Makefile trees alike.
+    # Look for it in the generated build files instead of parsing generator-specific 'help' output.
+    if grep -qs -e 'all_qmllint' "${BUILD_DIR}/build.ninja" "${BUILD_DIR}/Makefile"; then
+        QMLLINT_TARGETS=(all_qmllint)
     fi
 }
 
