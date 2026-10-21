@@ -1,227 +1,182 @@
 # Tapocalypse
 
-Tapocalypse is a Qt 6 puzzle game built with QML for the UI and C++ for the gameplay, persistence, and testable controller logic. The game takes the core idea of SameGame and presents it with a brighter arcade-style desktop UI, animated tile movement, idle hints, and a local developer pipeline.
+**One click. Whole groups vanish. The board collapses. How far can you take it?**
 
-Repository:
-[https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame)
+Tapocalypse is a neon arcade take on the classic SameGame: clear groups of three or more matching tiles, watch the
+board fall and slide into new combinations, and chase a score that grows with the *square* of every group you pop.
+Small groups are safe. Big groups are glorious. Greed is rewarded — until the board locks up.
 
-**Author: Marcel Petrick <mail@marcelpetrick.it>**
+[![Tapocalypse gameplay](media/typocalypse.gif)](media/typocalypse.mp4)
 
-**Note: projected is generated with AI.**
+[**Download for Linux, Windows or macOS**](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame/releases/latest) ·
+[Rules](RULES.md) · [Build from source](#build-from-source)
 
-**License: GPLv3 or later. See `LICENSE`.**
+---
 
-## Current State
+## Quick reference card
 
-Performance-improved state (for embedded SBC):
-[![Tapocalypse demo](media/typocalypse.gif)](media/typocalypse.mp4)
+| | |
+|---|---|
+| **Goal** | Highest score before no group of 3+ is left |
+| **Click** | A tile in a group of **3 or more** same-coloured, edge-touching tiles removes the whole group |
+| **Score** | Group of *N* tiles = **N × N** points (3 → 9, 5 → 25, 10 → 100) |
+| **Gravity** | Tiles fall down; empty columns close up to the left |
+| **Hover** | Outlines exactly the group a click would clear |
+| **Stuck?** | Wait 3 s — a playable group flashes as a hint |
+| **New Game** | Fresh board, score 0 |
+| **End Run** | Bank your current score now and enter the highscores |
+| **Highscores** | Local top ten |
+| **Window** | Starts full screen · `tapocalypse --windowed` for a resizable window |
 
-Earlier state (but three times slower!):  
-![Tapocalypse screenshot](media/DevState_Screenshot.png)
+**Pro tip:** don't clear the first group you see. Let colours pile up, then take them in one huge move —
+a single 12-tile group (144 points) beats four 3-tile groups (36 points) by a factor of four.
 
-## Gameplay
+## Get it
 
-Tapocalypse is a tile-clearing game played on a rectangular color grid.
+1. Open the [latest release](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame/releases/latest).
+2. Download the archive for your system and unpack it.
+3. Start it:
+   - Linux x86_64: `bin/tapocalypse`
+   - Windows x86_64: `bin\tapocalypse.exe`
+   - macOS (Apple silicon): `tapocalypse.app` — unsigned, so right-click → **Open** the first time.
 
-Rules in the current implementation:
+Everything Qt needs is in the archive. Checksums are in `SHA256SUMS.txt`.
 
-- Clicking a tile removes its connected color group using 4-neighborhood adjacency.
-- A move is only valid when the group size is at least `3`.
-- Score for a move is `groupSize * groupSize`.
-- After a valid move, tiles fall downward and empty columns shift left.
-- The game ends when no valid group of size `3` or larger remains.
-- There is no extra end-game bonus.
+## What you get
 
-UI behavior:
+- **Crisp neon board** that fills any screen — laptop, 4K, ultrawide, portrait — and stays sharp on resize.
+- **Readable motion:** groups pulse and pop, tiles fall, columns slide; nothing teleports.
+- **Hover preview and idle hints** so you always know what a click will do.
+- **End Run** to cash out a good board instead of grinding it down.
+- **Local top-ten highscores**, saved safely (atomic writes — a crash never wipes your table).
+- **Runs on small hardware:** tuned to hold frame rate on an i.MX8M Mini board.
 
-- Hovering tiles highlights their selectable group.
-- After three seconds without a click, the game flashes a playable group as an idle hint.
-- The hint repeats with a flash-pause-flash cycle until the next click anywhere in the window.
+The full, normative rules live in [RULES.md](RULES.md).
 
-## Features
+## Build from source
 
-- Qt Quick / QML desktop UI with animated tile removal, falling, shifting, and hover feedback.
-- `GameBoardController` C++ controller that keeps board state, move staging, scoring, and hint timing out of the QML rendering layer.
-- `GameRules` pure logic layer for group selection, board collapse, and move planning.
-- Persistent top-10 highscores stored as JSON.
-- Local test suite covering rules, controller behavior, bridge conversions, and highscore persistence.
-- Local pipeline helper that builds, tests, lints, formats, and generates a coverage dashboard.
+**Preflight checklist**
+
+- [ ] Qt **6.5 or newer** with Qt Quick (`qtbase`, `qtdeclarative`) — CI builds 6.5.3 and 6.12.0
+- [ ] CMake **3.24+**, a C++20 compiler (GCC, Clang or MSVC), Ninja or Make
+- [ ] Optional for the full pipeline: `gcovr`, `doxygen`, `clang-format`, `qmlformat`
+
+**Build, test, play**
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/path/to/Qt/6.12.0/gcc_64
+cmake --build build
+ctest --test-dir build --output-on-failure
+./build/bin/tapocalypse --windowed
+```
+
+On Windows use `-DCMAKE_PREFIX_PATH=C:\Qt\6.12.0\msvc2022_64` and run `build\bin\tapocalypse.exe`. In Qt Creator,
+open `CMakeLists.txt`, pick a Qt 6 kit and run.
+
+**Self-contained install** (Qt libraries, plugins and QML bundled):
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTAPOCALYPSE_DEPLOY_QT=ON
+cmake --build build --config Release
+cmake --install build --config Release --prefix dist
+```
+
+`TAPOCALYPSE_DEPLOY_QT` is on by default for Windows and macOS and off on Linux, where distribution Qt is shared.
+
+## Developer procedures
+
+### Local pipeline
+
+```bash
+./localPipeline.sh                    # build, test, coverage, docs, lint, format, then launch the game
+./localPipeline.sh --noRun --noOpen   # unattended: no game window, no browser tabs
+```
+
+| Stage | Passes when |
+|---|---|
+| Configure + Build | the default tree builds |
+| CTest | every registered test passes |
+| Coverage + Gate | line coverage ≥ `TAPOCALYPSE_COVERAGE_MIN_LINES` (default 90 %) |
+| Doxygen | docs build without warnings |
+| QML Lint | `all_qmllint` builds |
+| clang-format / qmlformat | no file changes |
+
+Reports: `build-coverage/coverage/html/index.html` and `build-docs/doxygen/html/index.html`.
+
+### Tests
+
+| Suite | Covers |
+|---|---|
+| `GameRulesTests` | group finding, removal, gravity, column shift, move planning |
+| `RulesConformanceTests` | seeded random games checked move by move against RULES.md with a reference model |
+| `GameBoardControllerTests` | move staging, scoring, hints, hover preview, End Run |
+| `GameLogicBridgeTests` | QVariant wire format |
+| `HighScoreManagerTests` | qualification, ordering, atomic persistence |
+| `FrameProfilerTests` | frame statistics on a real offscreen window |
+| `EndToEndTests` | the shipped QML driven by real mouse/key input: play to game over, highscore entry, layouts from 480×360 to 2560×720 |
+
+Save end-to-end screenshots with `TAPOCALYPSE_E2E_SCREENSHOT_DIR=/some/dir ./build/EndToEndTests`.
+
+### Continuous integration and releases
+
+- **CI** (`.github/workflows/ci.yml`): Linux, Windows and macOS with Qt 6.12, plus Linux with Qt 6.5.
+- **Release** (`.github/workflows/release.yml`): push a tag `vX.Y.Z` → tested, smoke-started, self-contained archives
+  for all three platforms on a GitHub release. Bump `project(... VERSION ...)` in `CMakeLists.txt` first.
+
+### Runtime switches
+
+| Switch | Effect |
+|---|---|
+| `--windowed` | resizable window instead of full screen |
+| `--benchmark` | plays automatically, as fast as the animations allow |
+| `TAPOCALYPSE_PROFILE=1` | prints one `TAPOCALYPSE_FRAME` line per second (fps, percentiles, budget overruns) |
+| `TAPOCALYPSE_PROFILE_SECONDS=N` | with profiling, quit after *N* seconds |
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Coverage stage fails with gcov "version"/"stamp mismatch" | Fixed automatically on the next pipeline run; or delete `build-coverage/` |
+| `qmlformat` fails on a file | The installed qmlformat rejects `pragma ComponentBehavior`; don't use the pragma |
+| `ctest: No module named 'cmake'` | A pip `cmake` shim shadows the real one; call `/usr/bin/ctest` |
+| No `console.log` output in Qt Creator | Already forced to stderr; check `QT_FORCE_STDERR_LOGGING` isn't set to `0` |
+| Reset the highscores | Quit the game and delete `highscores.json` (see below) |
+
+## Highscore storage
+
+`highscores.json` under `QStandardPaths::AppDataLocation`:
+
+- Linux: `~/.local/share/tapocalypse/highscores.json`
+- macOS: `~/Library/Application Support/tapocalypse/highscores.json`
+- Windows: `%AppData%\tapocalypse\highscores.json`
 
 ## Architecture
 
-The project is split into focused layers:
-
-- `qml/` contains rendering, window layout, and interaction wiring.
-- `GameBoardController` exposes board state and animation phases to QML.
-- `GameRules` contains pure board logic that is unit tested directly.
-- `GameLogicBridge` exposes variant-based rule helpers for QML-friendly use and focused tests.
-- `HighScoreManager` handles score qualification, storage, sorting, and reset behavior.
-
-This is no longer a “logic in one QML item” prototype. The gameplay path is intentionally structured so visual changes and gameplay changes can be tested independently.
-
-## Build And Run
-
-### Requirements
-
-- Qt `6.5+` with at least `Gui`, `Quick`, `Qml`, and `Test`
-- CMake `3.24+`
-- A C++20-capable compiler
-- A supported build tool such as Ninja or Make
-
-The top-level `CMakeLists.txt`:
-
-- builds the application target `Tapocalypse`
-- produces the runtime binary `build/bin/tapocalypse`
-- registers the QML module `Tapocalypse 1.0`
-- builds a shared `TapocalypseCore` library used by the app and tests
-- optionally enables gcov/gcovr-based coverage instrumentation
-
-### Quick Start
-
-Linux or macOS:
-
-```bash
-cmake -S . -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH=/path/to/Qt/6.8.0/gcc_64
-cmake --build build
-./build/bin/tapocalypse
-```
-
-Windows with MSVC and Ninja:
-
-```bat
-cmake -S . -B build -G Ninja ^
-  -DCMAKE_BUILD_TYPE=Release ^
-  -DCMAKE_PREFIX_PATH=C:\Qt\6.8.0\msvc2022_64
-cmake --build build
-build\bin\tapocalypse.exe
-```
-
-If you use Qt Creator, open `CMakeLists.txt`, select a Qt 6 kit, build, and run.
-
-## Local Pipeline
-
-The repository ships a helper script:
-
-```bash
-./localPipeline.sh
-```
-
-Useful variants:
-
-```bash
-./localPipeline.sh --noRun
-./localPipeline.sh --build-type Release
-./localPipeline.sh --generator Ninja --cmake-arg -DCMAKE_PREFIX_PATH=/path/to/Qt/6.8.0/gcc_64
-```
-
-What it does:
-
-- configures and builds the default tree
-- runs the registered `CTest` suite
-- configures and builds a dedicated `build-coverage/` tree
-- generates coverage reports in `build-coverage/coverage/`
-- writes an HTML dashboard to `build-coverage/coverage/html/index.html`
-- prints total line, function, and branch coverage in the summary
-- runs discovered `qmllint` targets when present
-- runs `clang-format` on C++ sources when installed
-- runs `qmlformat` on QML files when installed
-- optionally launches the app as the final step
-
-Current local coverage target:
-
-- lines: `100.0%`
-- functions: `100.0%`
-- branches: `100.0%`
-
-Notes:
-
-- `xdg-open` or `open` is used to hand the coverage dashboard to the desktop when possible.
-- In headless environments the open step may warn even though coverage generation succeeded.
-
-## Tests
-
-The codebase includes Qt Test coverage for:
-
-- `GameRules`
-- `GameBoardController`
-- `GameLogicBridge`
-- `HighScoreManager`
-
-Typical manual run:
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-ctest --test-dir build --output-on-failure
-```
-
-Coverage-enabled run:
-
-```bash
-cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DTAPOCALYPSE_ENABLE_COVERAGE=ON
-cmake --build build-coverage
-ctest --test-dir build-coverage --output-on-failure
-cmake --build build-coverage --target coverage
-cmake --build build-coverage --target coverage-html
-```
-
-## Highscore Storage
-
-Highscores are stored as `highscores.json` under `QStandardPaths::AppDataLocation`.
-
-Typical locations:
-
-- Linux: `~/.local/share/<app>/highscores.json`
-- macOS: `~/Library/Application Support/<app>/highscores.json`
-- Windows: `%AppData%\<Company>\<App>\highscores.json`
-
-Behavior:
-
-- top 10 entries are kept
-- higher score sorts first
-- ties are ordered by older timestamp first
-- names are trimmed and capped at 20 characters
-- non-positive scores are ignored
-
-Reset highscores either from the app UI or by deleting the file while the app is closed.
-
-## Customization
-
-- Grid size: adjust the controller usage in `qml/main.qml`
-- Visual style: tweak colors, tile effects, and layout in `qml/`
-- Rules and scoring: update `src/GameRules.*` and controller behavior in `src/GameBoardController.*`
-- Highscore capacity: change `kMaxEntries` in `src/HighScoreManager.h`
-
-## Project Layout
+| Part | Role |
+|---|---|
+| `src/GameRules.*` | pure board logic, no Qt GUI dependency |
+| `src/GameBoardController.*` | game state, move staging, hints and hover for QML (`QML_ELEMENT`) |
+| `src/VariantConversions.h` | the QVariant wire format shared with QML |
+| `src/GameLogicBridge.*` | variant-based access to the rules for scripting and tests |
+| `src/HighScoreManager.*` | top-ten table with atomic JSON persistence |
+| `src/FrameProfiler.*` | opt-in frame-time telemetry |
+| `qml/` | window, board, tiles, dialog, themed buttons — rendering only |
 
 ```text
 .
-├─ CMakeLists.txt
-├─ localPipeline.sh
-├─ qml/
-│  ├─ main.qml
-│  ├─ GameBoard.qml
-│  ├─ Tile.qml
-│  └─ ScoreDialog.qml
-├─ src/
-│  ├─ main.cpp
-│  ├─ GameBoardController.h/.cpp
-│  ├─ GameLogicBridge.h/.cpp
-│  ├─ GameRules.h/.cpp
-│  └─ HighScoreManager.h/.cpp
-└─ tests/
-   ├─ test_gameboardcontroller.cpp
-   ├─ test_gamelogicbridge.cpp
-   ├─ test_gamerules.cpp
-   └─ test_highscoremanager.cpp
+├─ CMakeLists.txt        build, tests, coverage, install/deploy
+├─ localPipeline.sh      local quality gate
+├─ RULES.md              normative game rules
+├─ src/                  C++ core and controller
+├─ qml/                  QML user interface
+├─ tests/                Qt Test suites, incl. end-to-end
+└─ .github/workflows/    CI and release
 ```
 
 ## License
 
-GPLv3. See [LICENSE](LICENSE).
+GPLv3 or later — see [LICENSE](LICENSE).
 
 ## Credits
 
-Tapocalypse by Marcel Petrick.
+Tapocalypse by Marcel Petrick &lt;mail@marcelpetrick.it&gt;. This project is generated with AI.
