@@ -143,6 +143,7 @@ if(BUILD_TESTING)
             set(TAPOCALYPSE_COVERAGE_HTML_DIR "${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/html")
 
             add_custom_target(coverage
+                COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/RemoveGcda.cmake
                 COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}
                 COMMAND ${GCOVR_EXECUTABLE}
@@ -163,6 +164,7 @@ if(BUILD_TESTING)
             )
 
             add_custom_target(coverage-html
+                COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/RemoveGcda.cmake
                 COMMAND ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${TAPOCALYPSE_COVERAGE_HTML_DIR}
                 COMMAND ${GCOVR_EXECUTABLE}
