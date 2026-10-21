@@ -69,10 +69,17 @@ target_link_libraries(TapocalypseQml
         Qt6::Quick
 )
 
-# App
-qt_add_executable(Tapocalypse
+# Opt-in frame-time telemetry for field profiling (TAPOCALYPSE_PROFILE=1)
+add_library(TapocalypseProfiler STATIC
     src/FrameProfiler.cpp
     src/FrameProfiler.h
+)
+
+target_link_libraries(TapocalypseProfiler PUBLIC Qt6::Quick)
+target_include_directories(TapocalypseProfiler PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# App
+qt_add_executable(Tapocalypse
     src/main.cpp
 )
 
@@ -83,6 +90,7 @@ target_link_libraries(Tapocalypse
     PRIVATE
         TapocalypseQml
         TapocalypseQmlplugin
+        TapocalypseProfiler
         Qt6::Gui
         Qt6::Qml
         Qt6::Quick
@@ -165,6 +173,20 @@ if(BUILD_TESTING)
 
     add_test(NAME RulesConformanceTests COMMAND RulesConformanceTests)
 
+    qt_add_executable(FrameProfilerTests
+        tests/test_frameprofiler.cpp
+    )
+
+    target_link_libraries(FrameProfilerTests
+        PRIVATE
+            TapocalypseProfiler
+            Qt6::Quick
+            Qt6::Test
+    )
+
+    add_test(NAME FrameProfilerTests COMMAND FrameProfilerTests)
+    set_tests_properties(FrameProfilerTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
     qt_add_executable(EndToEndTests
         tests/test_e2e.cpp
     )
@@ -205,7 +227,7 @@ if(BUILD_TESTING)
                     --json-summary ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/summary.json
                     --json-summary-pretty
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests RulesConformanceTests EndToEndTests
+                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests RulesConformanceTests FrameProfilerTests EndToEndTests
                 USES_TERMINAL
                 COMMENT "Running tests and generating text/json coverage report"
             )
@@ -226,7 +248,7 @@ if(BUILD_TESTING)
                     --json-summary ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/summary.json
                     --json-summary-pretty
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests RulesConformanceTests EndToEndTests
+                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests RulesConformanceTests FrameProfilerTests EndToEndTests
                 USES_TERMINAL
                 COMMENT "Running tests and generating HTML coverage summary"
             )

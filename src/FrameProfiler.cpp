@@ -1,6 +1,7 @@
 #include "FrameProfiler.h"
 
 #include <QCoreApplication>
+#include <QMutexLocker>
 #include <QQuickWindow>
 #include <algorithm>
 #include <cmath>
@@ -40,7 +41,8 @@ FrameProfiler::FrameProfiler(QQuickWindow* window, double autoExitSeconds) : QOb
     // telemetry to grow indefinitely between reports.
     intervalsNs_.reserve(512);
 
-    connect(window, &QQuickWindow::frameSwapped, this, [this] { recordFrame(); });
+    // Direct connection: record on the emitting (render) thread instead of when the GUI thread gets to it.
+    connect(window, &QQuickWindow::frameSwapped, this, [this] { recordFrame(); }, Qt::DirectConnection);
     connect(&reportTimer_, &QTimer::timeout, this, [this] { report(); });
     reportTimer_.start(kReportIntervalMs);
 
@@ -52,6 +54,7 @@ FrameProfiler::FrameProfiler(QQuickWindow* window, double autoExitSeconds) : QOb
 }
 
 void FrameProfiler::recordFrame() {
+    const QMutexLocker lock(&mutex_);
     if (!frameTimer_.isValid()) {
         frameTimer_.start();
         return;
@@ -62,19 +65,23 @@ void FrameProfiler::recordFrame() {
 }
 
 void FrameProfiler::report() {
-    // Swap in an empty, pre-reserved buffer so frame collection can continue
-    // independently of the statistics work.
+    // Swap in an empty, pre-reserved buffer so frame collection continues while statistics are computed.
     QVector<qint64> samples;
     samples.reserve(512);
-    intervalsNs_.swap(samples);
+    {
+        const QMutexLocker lock(&mutex_);
+        intervalsNs_.swap(samples);
+    }
+    writeSummary(summarize(std::move(samples)));
+}
 
+QByteArray FrameProfiler::summarize(QVector<qint64> samples) {
     const qsizetype frames = samples.size();
     if (samples.isEmpty()) {
-        writeSummary(
+        return QByteArrayLiteral(
             "TAPOCALYPSE_FRAME frames=0 fps=0.00 mean_ms=0.000"
             " p50_ms=0.000 p95_ms=0.000 p99_ms=0.000 max_ms=0.000"
             " over_16_67=0 over_33_33=0");
-        return;
     }
 
     const qint64 totalNs = std::accumulate(samples.cbegin(), samples.cend(), qint64{0});
@@ -89,16 +96,17 @@ void FrameProfiler::report() {
     std::sort(samples.begin(), samples.end());
     const double maxMs = static_cast<double>(samples.constLast()) / kNanosecondsPerMillisecond;
 
-    writeSummary(QStringLiteral("TAPOCALYPSE_FRAME frames=%1 fps=%2 mean_ms=%3 p50_ms=%4 p95_ms=%5 "
-                                "p99_ms=%6 max_ms=%7 over_16_67=%8 over_33_33=%9")
-                     .arg(frames)
-                     .arg(fps, 0, 'f', 2)
-                     .arg(meanMs, 0, 'f', 3)
-                     .arg(percentileMs(samples, 0.50), 0, 'f', 3)
-                     .arg(percentileMs(samples, 0.95), 0, 'f', 3)
-                     .arg(percentileMs(samples, 0.99), 0, 'f', 3)
-                     .arg(maxMs, 0, 'f', 3)
-                     .arg(overFirstBudget)
-                     .arg(overSecondBudget)
-                     .toUtf8());
+    return QStringLiteral(
+               "TAPOCALYPSE_FRAME frames=%1 fps=%2 mean_ms=%3 p50_ms=%4 p95_ms=%5 "
+               "p99_ms=%6 max_ms=%7 over_16_67=%8 over_33_33=%9")
+        .arg(frames)
+        .arg(fps, 0, 'f', 2)
+        .arg(meanMs, 0, 'f', 3)
+        .arg(percentileMs(samples, 0.50), 0, 'f', 3)
+        .arg(percentileMs(samples, 0.95), 0, 'f', 3)
+        .arg(percentileMs(samples, 0.99), 0, 'f', 3)
+        .arg(maxMs, 0, 'f', 3)
+        .arg(overFirstBudget)
+        .arg(overSecondBudget)
+        .toUtf8();
 }
