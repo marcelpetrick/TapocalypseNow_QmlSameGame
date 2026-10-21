@@ -22,6 +22,11 @@
  */
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
+    // The application name selects the highscore directory. It matches the binary name Qt used implicitly before,
+    // so existing scoreboards stay where they are even if the executable is renamed.
+    QCoreApplication::setApplicationName(QStringLiteral("tapocalypse"));
+    QGuiApplication::setApplicationDisplayName(QStringLiteral("Tapocalypse"));
+    QCoreApplication::setApplicationVersion(QStringLiteral(TAPOCALYPSE_VERSION));
 
     qmlRegisterType<GameBoardController>("Tapocalypse", 1, 0, "GameBoardController");
 
