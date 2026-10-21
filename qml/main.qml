@@ -108,7 +108,7 @@ ApplicationWindow {
 
             spacing: root.unit * 0.5
 
-            Button {
+            NeonButton {
                 objectName: "newGameButton"
                 text: "New Game"
                 font.pixelSize: root.unit
@@ -118,8 +118,9 @@ ApplicationWindow {
                 }
             }
 
-            Button {
+            NeonButton {
                 objectName: "endRunButton"
+                accent: "#ff7bd5"
                 text: "End Run"
                 font.pixelSize: root.unit
                 enabled: !game.gameOver && !game.busy && game.moves > 0
@@ -129,8 +130,9 @@ ApplicationWindow {
                 }
             }
 
-            Button {
+            NeonButton {
                 objectName: "highscoresButton"
+                accent: "#d0a2ff"
                 text: "Highscores"
                 font.pixelSize: root.unit
                 onClicked: {

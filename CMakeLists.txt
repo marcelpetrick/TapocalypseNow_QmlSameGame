@@ -60,6 +60,7 @@ qt_add_qml_module(TapocalypseQml
         qml/GameBoard.qml
         qml/Tile.qml
         qml/ScoreDialog.qml
+        qml/NeonButton.qml
 )
 
 target_link_libraries(TapocalypseQml

@@ -122,7 +122,7 @@ Popup {
                 onAccepted: root.submit()
             }
 
-            Button {
+            NeonButton {
                 objectName: "saveButton"
                 text: "Save"
                 font.pixelSize: root.unit
@@ -185,7 +185,7 @@ Popup {
 
         }
 
-        Button {
+        NeonButton {
             Layout.alignment: Qt.AlignRight
             text: "Close"
             font.pixelSize: root.unit
