@@ -602,25 +602,29 @@ configure_coverage_project() {
     fi
 
     log "Configuring dedicated coverage build in '${COVERAGE_BUILD_DIR}'."
-
-    # gcov notes and counters are compiler-version specific, and orphaned objects
-    # from older configurations are never rebuilt. Start fresh on a toolchain change.
-    local compiler_stamp="${COVERAGE_BUILD_DIR}/.tapocalypse-compiler"
-    local compiler_id
-    compiler_id="$("${CXX:-c++}" --version 2>/dev/null | head -n 1)"
-    if [[ -d "${COVERAGE_BUILD_DIR}" && "$(cat "${compiler_stamp}" 2>/dev/null)" != "${compiler_id}" ]]; then
-        log "Compiler changed or unknown for '${COVERAGE_BUILD_DIR}'; wiping the coverage tree."
-        rm -rf "${COVERAGE_BUILD_DIR}"
-    fi
     mkdir -p "${COVERAGE_BUILD_DIR}" || return 1
-    printf '%s\n' "${compiler_id}" > "${compiler_stamp}"
 
     run_command "Running CMake coverage configure step" "${cmd[@]}"
 }
 
 build_coverage_project() {
+    local -a clean_first=()
+
+    # gcov notes are compiler-version specific, and notes of objects that are no longer built are never refreshed.
+    # When the configured compiler changes, drop only gcov artifacts and rebuild from clean.
+    local compiler_stamp="${COVERAGE_BUILD_DIR}/.tapocalypse-compiler"
+    local compiler_path compiler_id
+    compiler_path="$(sed -n 's/^CMAKE_CXX_COMPILER:[A-Z]*=//p' "${COVERAGE_BUILD_DIR}/CMakeCache.txt" 2>/dev/null)"
+    compiler_id="${compiler_path} $("${compiler_path:-c++}" --version 2>/dev/null | head -n 1)"
+    if [[ "$(cat "${compiler_stamp}" 2>/dev/null)" != "${compiler_id}" ]]; then
+        log "Coverage compiler changed or unknown; removing gcov data and rebuilding from clean."
+        find "${COVERAGE_BUILD_DIR}" \( -name '*.gcno' -o -name '*.gcda' \) -type f -delete
+        clean_first=(--clean-first)
+    fi
+
     log "Building coverage configuration with ${PARALLEL_JOBS} parallel job(s)."
-    run_command "Running coverage build" cmake --build "${COVERAGE_BUILD_DIR}" --parallel "${PARALLEL_JOBS}"
+    run_command "Running coverage build" cmake --build "${COVERAGE_BUILD_DIR}" --parallel "${PARALLEL_JOBS}" "${clean_first[@]}" || return 1
+    printf '%s\n' "${compiler_id}" > "${compiler_stamp}"
 }
 
 generate_doxygen_docs() {
@@ -710,7 +714,7 @@ generate_coverage_report() {
 
     # Counters from an earlier run (or an older compiler) do not match freshly
     # rebuilt notes files and make gcov abort, so always start from zero.
-    find "${COVERAGE_BUILD_DIR}" -name '*.gcda' -delete
+    find "${COVERAGE_BUILD_DIR}" -name '*.gcda' -type f -delete
 
     if ! run_command "Running coverage tests" "${CTEST_COMMAND}" --test-dir "${COVERAGE_BUILD_DIR}" --output-on-failure; then
         mark_result "Coverage" "FAIL" "Coverage tests failed"
