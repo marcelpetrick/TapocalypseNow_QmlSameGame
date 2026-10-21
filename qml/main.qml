@@ -99,14 +99,6 @@ ApplicationWindow {
             }
         }
 
-        Button {
-            text: "Reset Highscores"
-            onClicked: {
-                game.registerUserAction();
-                highScoreManager.resetScores();
-            }
-        }
-
     }
 
     // Board container with glow lines

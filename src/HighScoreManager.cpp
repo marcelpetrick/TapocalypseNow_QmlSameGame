@@ -100,9 +100,3 @@ bool HighScoreManager::submitScore(const QString& name, int score) {
     emit scoresChanged();
     return saveToDisk();
 }
-
-void HighScoreManager::resetScores() {
-    m_scores.clear();
-    emit scoresChanged();
-    saveToDisk();
-}

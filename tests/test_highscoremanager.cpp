@@ -21,7 +21,6 @@ class HighScoreManagerTest : public QObject {
     void qualifies_requiresStrictlyBetterThanLowestStoredScore();
     void submitScore_trimsCapsAndPersistsValidEntries();
     void submitScore_sortsTiesAndKeepsTopTen();
-    void resetScores_clearsPersistedEntries();
     void directoryPath_doesNotCrashLoadOrSave();
     void submitScore_reportsResultAndNotifies();
 
@@ -137,18 +136,6 @@ void HighScoreManagerTest::submitScore_sortsTiesAndKeepsTopTen() {
     QCOMPARE(scores.last().toMap().value("score").toInt(), 4);
 }
 
-void HighScoreManagerTest::resetScores_clearsPersistedEntries() {
-    HighScoreManager manager = createManager();
-    manager.submitScore(QStringLiteral("Ada"), 42);
-    QVERIFY(!manager.loadScores().isEmpty());
-
-    manager.resetScores();
-
-    QCOMPARE(manager.loadScores().size(), 0);
-    HighScoreManager reloaded = createManager();
-    QCOMPARE(reloaded.loadScores().size(), 0);
-}
-
 void HighScoreManagerTest::directoryPath_doesNotCrashLoadOrSave() {
     QDir dir(m_tempDir->path() + QStringLiteral("/as-directory"));
     QVERIFY(QDir().mkpath(dir.path()));
@@ -171,9 +158,8 @@ void HighScoreManagerTest::submitScore_reportsResultAndNotifies() {
     QCOMPARE(changed.count(), 1);
     QCOMPARE(manager.property("scores").toList().size(), 1);
 
-    manager.resetScores();
-    QCOMPARE(changed.count(), 2);
-    QVERIFY(manager.property("scores").toList().isEmpty());
+    HighScoreManager reloaded = createManager();
+    QCOMPARE(reloaded.loadScores().size(), 1);
 }
 
 HighScoreManager HighScoreManagerTest::createManager() const { return HighScoreManager(storageFilePath()); }

@@ -67,12 +67,6 @@ class HighScoreManager : public QObject {
      * entries, and written to disk atomically. A failed write keeps the previous file intact.
      */
     Q_INVOKABLE bool submitScore(const QString& name, int score);
-    /**
-     * @brief Remove every stored score and persist the empty list.
-     *
-     * This clears both the in-memory table and the persisted JSON file contents.
-     */
-    Q_INVOKABLE void resetScores();
 
    signals:
     /// Emitted whenever the in-memory scoreboard changes.
