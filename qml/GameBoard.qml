@@ -16,6 +16,8 @@ Item {
     readonly property int moves: controller.moves
     readonly property bool gameOver: controller.gameOver
     readonly property bool busy: controller.busy
+    // Incremented whenever a fresh board is dealt so tiles can play their intro.
+    property int dealEpoch: 0
 
     signal gameEnded(int score)
 
@@ -25,13 +27,18 @@ Item {
 
     function reset() {
         controller.reset();
+        dealEpoch++;
+    }
+
+    function endRun() {
+        controller.endRun();
     }
 
     function registerUserAction() {
         controller.registerUserAction();
     }
 
-    Component.onCompleted: Qt.callLater(controller.reset)
+    Component.onCompleted: Qt.callLater(board.reset)
 
     GameBoardController {
         id: controller
@@ -77,6 +84,7 @@ Item {
                 shakeActive: controller.shakeSet[r + "," + c] === true
                 hintActive: controller.hintSet[r + "," + c] === true
                 hintPulseEpoch: controller.hintPulseEpoch
+                spawnEpoch: board.dealEpoch
                 onClicked: {
                     controller.removeGroup(r, c);
                 }

@@ -15,32 +15,28 @@ Item {
     property bool shakeActive: false
     property bool hintActive: false
     property int hintPulseEpoch: 0
+    // incremented by GameBoard when a new board is dealt; plays the drop-in intro
+    property int spawnEpoch: 0
     // safe color (also used for effects)
     readonly property color selectedColor: (colorIndex >= 0 && colorPalette.length > 0 && colorIndex < colorPalette.length) ? colorPalette[colorIndex] : "#222532"
-    // track previous index to detect spawn after collapse
-    property int _prevIndex: -2
-    // jitter for shake
+    // Effect channels. Animations drive these instead of x/y/scale/opacity so the
+    // layout and press bindings are never overwritten (and stay correct on resize).
     property real jitterX: 0
-    // spawn animation endpoints captured once in onColorIndexChanged
-    property real _spawnFromY: 0
-    property real _spawnToY: 0
+    property real spawnOffsetY: 0
+    property real effectScale: 1
+    property real effectOpacity: 1
 
     signal clicked()
 
     // visibility follows content
     visible: colorIndex >= 0
     // --- lifecycle cues -----------------------------------------------------
-    // Spawn drop-in animation when this cell becomes non-empty
-    onColorIndexChanged: {
-        if (_prevIndex === -1 && colorIndex >= 0) {
-            _spawnFromY = y - height * 0.25;
-            _spawnToY = y;
+    // Drop-in intro for a freshly dealt board. Tiles landing after a collapse are
+    // already animated by GameBoard's moving overlays and must not replay it.
+    onSpawnEpochChanged: {
+        if (colorIndex >= 0)
             spawnAnim.restart();
-        }
-        _prevIndex = colorIndex;
-    }
-    Component.onCompleted: {
-        _prevIndex = colorIndex;
+
     }
     // --- pop preview (valid group) -----------------------------------------
     onPopActiveChanged: {
@@ -76,8 +72,8 @@ Item {
         radius: width * 0.22
         border.width: 2
         border.color: "#1f2a6b"
-        opacity: 0.98
-        scale: pressedArea.pressed ? 0.94 : 1
+        opacity: 0.98 * tile.effectOpacity
+        scale: (pressedArea.pressed ? 0.94 : 1) * tile.effectScale
 
         // quick flash overlay for pop
         Rectangle {
@@ -259,30 +255,33 @@ Item {
 
         running: false
 
-        PropertyAnimation {
-            target: tile
-            property: "y"
-            from: tile._spawnFromY
-            to: tile._spawnToY
-            duration: 180
-            easing.type: Easing.OutQuad
+        ParallelAnimation {
+            PropertyAnimation {
+                target: tile
+                property: "spawnOffsetY"
+                from: -tile.height * 0.25
+                to: 0
+                duration: 180
+                easing.type: Easing.OutQuad
+            }
+
+            PropertyAnimation {
+                target: tile
+                property: "effectOpacity"
+                from: 0
+                to: 1
+                duration: 160
+            }
+
         }
 
         PropertyAnimation {
-            target: core
-            property: "scale"
+            target: tile
+            property: "effectScale"
             from: 0.92
             to: 1
             duration: 120
             easing.type: Easing.OutBack
-        }
-
-        PropertyAnimation {
-            target: core
-            property: "opacity"
-            from: 0
-            to: 0.98
-            duration: 160
         }
 
     }
@@ -295,16 +294,16 @@ Item {
         // scale pulse
         SequentialAnimation {
             PropertyAnimation {
-                target: core
-                property: "scale"
+                target: tile
+                property: "effectScale"
                 to: 1.15
                 duration: 110
                 easing.type: Easing.OutCubic
             }
 
             PropertyAnimation {
-                target: core
-                property: "scale"
+                target: tile
+                property: "effectScale"
                 to: 1
                 duration: 90
                 easing.type: Easing.InCubic
@@ -382,6 +381,7 @@ Item {
 
     transform: Translate {
         x: tile.jitterX
+        y: tile.spawnOffsetY
     }
 
     Behavior on x {
@@ -402,15 +402,6 @@ Item {
             easing.type: Easing.InOutCubic
         }
 
-    }
-
-    NumberAnimation on opacity {
-        // initial subtle fade on creation
-        from: 0
-        to: 1
-        running: true
-        duration: 180
-        easing.type: Easing.OutQuad
     }
 
 }
