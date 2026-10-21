@@ -250,6 +250,7 @@ void GameBoardController::applyFallPhase() {
     }
 
     if (m_pendingMovePlan.fallMotions.isEmpty()) {
+        setGridState(m_pendingMovePlan.afterFallGrid);
         applyShiftPhase();
         return;
     }
@@ -260,8 +261,7 @@ void GameBoardController::applyFallPhase() {
 }
 
 void GameBoardController::applyShiftPhase() {
-    // Single place that publishes the post-fall board, whether or not a fall animation ran.
-    setGridState(m_pendingMovePlan.afterFallGrid);
+    // Callers have already published afterFallGrid.
     if (m_pendingMovePlan.shiftMotions.isEmpty()) {
         finishMovePhases();
         return;
@@ -426,6 +426,8 @@ void GameBoardController::onRemovePreviewTimer() { startResolvedMove(); }
 void GameBoardController::onRemoveHoldTimer() { applyFallPhase(); }
 
 void GameBoardController::onFallTimer() {
+    // Land the tiles before removing the overlays, so the hidden sources never reappear with their old colours.
+    setGridState(m_pendingMovePlan.afterFallGrid);
     setMovingTiles({});
     setHiddenSet({});
     applyShiftPhase();

@@ -38,6 +38,7 @@ class GameBoardControllerTest : public QObject {
     void endRun_endsPlayableRunOnceAndIgnoresBusyOrFinishedBoards();
     void benchmarkStep_playsFirstGroupAndRestartsFinishedGames();
     void hover_previewsRemovableGroupsOnly();
+    void fallPhase_neverRevealsHiddenSourcesOnTheOldGrid();
 };
 
 void GameBoardControllerTest::setters_emitOnlyOnValueChanges() {
@@ -508,6 +509,32 @@ void GameBoardControllerTest::hover_previewsRemovableGroupsOnly() {
 
     controller.endRun();
     QVERIFY(controller.hoverSet().isEmpty());
+}
+
+void GameBoardControllerTest::fallPhase_neverRevealsHiddenSourcesOnTheOldGrid() {
+    GameBoardController controller;
+    controller.setAnimationTimingsForTesting(1, 1, 1, 1, 1);
+    controller.setHintTimingsForTesting(1000, 1000);
+    const GameGrid grid = makeGrid({
+        {1, 2, 3},
+        {4, 4, 4},
+        {5, 6, 7},
+    });
+    controller.setGridForTesting(grid);
+    const auto plan = GameRules::planMove(grid, 1, 0, 3);
+    QVERIFY(!plan.fallMotions.isEmpty());
+
+    // Whenever the overlays are dropped, the grid must already show where the tiles landed.
+    QVector<GameGrid> gridsWhenUnhidden;
+    connect(&controller, &GameBoardController::hiddenSetChanged, &controller, [&] {
+        if (controller.hiddenSet().isEmpty() && controller.busy()) gridsWhenUnhidden.push_back(controller.gridState());
+    });
+
+    controller.removeGroup(1, 0);
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), 1000);
+
+    QVERIFY(!gridsWhenUnhidden.isEmpty());
+    for (const auto& seen : gridsWhenUnhidden) QVERIFY(seen == plan.afterFallGrid || seen == plan.afterShiftGrid);
 }
 
 QTEST_GUILESS_MAIN(GameBoardControllerTest)
