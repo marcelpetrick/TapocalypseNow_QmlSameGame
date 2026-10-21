@@ -25,9 +25,10 @@ int main(int argc, char* argv[]) {
 
     qmlRegisterType<GameBoardController>("Tapocalypse", 1, 0, "GameBoardController");
 
-    QQmlApplicationEngine engine;
-
+    // Declared before the engine so it outlives every QML binding that reads it.
     HighScoreManager hsManager;
+
+    QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("highScoreManager", &hsManager);
 
     const QUrl url(QStringLiteral("qrc:/Tapocalypse/qml/main.qml"));
