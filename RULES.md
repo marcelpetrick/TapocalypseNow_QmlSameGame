@@ -166,6 +166,12 @@ With the current parameters, that means:
 
 The board may still contain tiles when the game ends.
 
+### Ending a run early
+
+The player may also end a run voluntarily ("End Run") while it is `playing`, after at least one legal move and
+while no move is still resolving. The run then ends exactly as if no legal move remained: the board freezes, the
+state becomes `gameOver`, and the current score is the final score.
+
 ## 11. Game State
 
 The gameplay state machine should be interpreted as follows:
@@ -200,7 +206,8 @@ Admission rules:
 - if `10` scores already exist, a new score qualifies only if it is strictly greater than the current lowest stored score
 - equal-to-lowest scores do not qualify
 - a score of `0` does not qualify
-- an unfinished or aborted run does not qualify unless the product explicitly adds an abandon-and-submit rule
+- a run ended early with "End Run" (§10) is a finished run and qualifies under the same rules
+- a run abandoned by starting a new game or closing the app is not submitted
 
 ## 13. Invariants
 
@@ -304,4 +311,4 @@ Short version:
 - gain `N * N` points for a group of size `N`
 - tiles fall down
 - empty columns shift left
-- the game ends when no legal move remains
+- the game ends when no legal move remains, or when you choose "End Run"
