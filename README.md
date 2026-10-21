@@ -36,7 +36,7 @@ a single 12-tile group (144 points) beats four 3-tile groups (36 points) by a fa
 1. Open the [latest release](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame/releases/latest).
 2. Download the archive for your system and unpack it.
 3. Start it:
-   - Linux x86_64: `bin/tapocalypse`
+   - Linux x86_64: `bin/tapocalypse` (X11 or XWayland; on Wayland-only setups install XWayland)
    - Windows x86_64: `bin\tapocalypse.exe`
    - macOS (Apple silicon): `tapocalypse.app` — unsigned, so right-click → **Open** the first time.
 
