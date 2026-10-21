@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 
 // Flat neon-outlined button matching the board theme.
 Button {
