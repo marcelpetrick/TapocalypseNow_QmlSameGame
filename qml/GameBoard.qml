@@ -9,8 +9,10 @@ Item {
     property int rows: 10
     property int cols: 16
     property int minimumGroupSize: 3
-    readonly property real cell: Math.min(width / cols, height / rows)
-    readonly property real spacing: cell * 0.06
+    // Gaps are a fixed share of a cell, so solve for the cell that fits cells plus gaps on both axes.
+    readonly property real gapRatio: 0.06
+    readonly property real cell: Math.min(width / (cols + gapRatio * (cols - 1)), height / (rows + gapRatio * (rows - 1)))
+    readonly property real spacing: cell * gapRatio
     readonly property real pitch: cell + spacing
     readonly property int score: controller.score
     readonly property int moves: controller.moves
