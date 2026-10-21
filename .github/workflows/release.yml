@@ -1,0 +1,129 @@
+name: Release
+
+# Push a tag such as v1.2.3 to build, test and package Tapocalypse for Linux, Windows and macOS and publish the
+# archives as a GitHub release. Run it manually to get the archives as workflow artifacts without releasing.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  QT_VERSION: 6.11.3
+
+jobs:
+  package:
+    name: Package · ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-22.04 # oldest supported glibc for the widest Linux compatibility
+          - platform: windows-x86_64
+            os: windows-2022
+          - platform: macos-arm64
+            os: macos-15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1 libxcb-cursor0
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then version="${GITHUB_REF_NAME#v}"; else version="0.0.0-${GITHUB_SHA::7}"; fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "name=tapocalypse-${version}-${{ matrix.platform }}" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTAPOCALYPSE_DEPLOY_QT=ON ${{ runner.os == 'Linux' && '-G Ninja' || '' }}
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build --build-config Release --output-on-failure --timeout 300
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Install into a self-contained folder
+        run: cmake --install build --config Release --prefix "stage/${{ steps.version.outputs.name }}"
+
+      - name: Smoke-test the packaged app
+        shell: bash
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          root="stage/${{ steps.version.outputs.name }}"
+          case "${RUNNER_OS}" in
+            Linux) app="${root}/bin/tapocalypse" ;;
+            Windows) app="${root}/bin/tapocalypse.exe" ;;
+            macOS) app="${root}/tapocalypse.app/Contents/MacOS/tapocalypse" ;;
+          esac
+          # A healthy app keeps running; one that cannot load its Qt plugins or QML exits immediately.
+          "${app}" --windowed &
+          pid=$!
+          sleep 5
+          if ! kill -0 "${pid}" 2>/dev/null; then
+            wait "${pid}"; echo "app exited early with status $?"; exit 1
+          fi
+          kill "${pid}"
+          echo "app was still running after 5 s"
+
+      - name: Archive
+        shell: bash
+        run: |
+          cp README.md LICENSE RULES.md "stage/${{ steps.version.outputs.name }}/"
+          cd stage
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            tar -czf "${{ steps.version.outputs.name }}.tar.gz" "${{ steps.version.outputs.name }}"
+          else
+            7z a -tzip "${{ steps.version.outputs.name }}.zip" "${{ steps.version.outputs.name }}" > /dev/null
+          fi
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.version.outputs.name }}
+          path: stage/${{ steps.version.outputs.name }}.*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    if: github.ref_type == 'tag'
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          name: Tapocalypse ${{ github.ref_name }}
+          body_path: .github/release-notes.md
+          generate_release_notes: true
+          files: dist/*

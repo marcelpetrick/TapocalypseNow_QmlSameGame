@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux · Qt 6.11
+            os: ubuntu-24.04
+            qt: 6.11.3
+          - name: Linux · Qt 6.5 (minimum)
+            os: ubuntu-22.04
+            qt: 6.5.3
+          - name: Windows · Qt 6.11
+            os: windows-2022
+            qt: 6.11.3
+          - name: macOS · Qt 6.11
+            os: macos-15
+            qt: 6.11.3
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1
+
+      - name: Install Qt ${{ matrix.qt }}
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ matrix.qt }}
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ runner.os == 'Linux' && '-G Ninja' || '' }}
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build --build-config Release --output-on-failure --timeout 300
+        env:
+          QT_QPA_PLATFORM: offscreen
