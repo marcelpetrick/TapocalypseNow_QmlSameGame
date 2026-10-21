@@ -12,6 +12,10 @@ option(TAPOCALYPSE_ENABLE_COVERAGE "Build with gcov/gcovr coverage instrumentati
 find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Quick Qml Test)
 
 qt_standard_project_setup(REQUIRES 6.5)
+# Newer Qt releases know more policies than 6.5; opt into the ones that apply to this layout.
+if(QT_KNOWN_POLICY_QTP0004)
+    qt_policy(SET QTP0004 NEW)
+endif()
 
 if(TAPOCALYPSE_ENABLE_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
