@@ -49,6 +49,7 @@ Item {
     GameBoardController {
         id: controller
 
+        objectName: "controller"
         rows: board.rows
         cols: board.cols
         minimumGroupSize: board.minimumGroupSize
@@ -68,6 +69,7 @@ Item {
     Item {
         id: tileView
 
+        objectName: "tileView"
         anchors.centerIn: parent
         width: cols * cell + (cols - 1) * spacing
         height: rows * cell + (rows - 1) * spacing

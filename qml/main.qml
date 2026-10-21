@@ -109,6 +109,7 @@ ApplicationWindow {
             spacing: root.unit * 0.5
 
             Button {
+                objectName: "newGameButton"
                 text: "New Game"
                 font.pixelSize: root.unit
                 onClicked: {
@@ -118,6 +119,7 @@ ApplicationWindow {
             }
 
             Button {
+                objectName: "endRunButton"
                 text: "End Run"
                 font.pixelSize: root.unit
                 enabled: !game.gameOver && !game.busy && game.moves > 0
@@ -128,6 +130,7 @@ ApplicationWindow {
             }
 
             Button {
+                objectName: "highscoresButton"
                 text: "Highscores"
                 font.pixelSize: root.unit
                 onClicked: {
@@ -151,6 +154,7 @@ ApplicationWindow {
     Rectangle {
         id: boardFrame
 
+        objectName: "boardFrame"
         anchors.top: header.bottom
         anchors.left: parent.left
         anchors.right: parent.right
@@ -165,6 +169,7 @@ ApplicationWindow {
         GameBoard {
             id: game
 
+            objectName: "gameBoard"
             anchors.fill: parent
             anchors.margins: root.unit
             rows: root.gridRows
@@ -179,6 +184,7 @@ ApplicationWindow {
     ScoreDialog {
         id: scoreDialog
 
+        objectName: "scoreDialog"
         anchors.centerIn: parent
         unit: root.unit
         highScoreService: highScoreManager

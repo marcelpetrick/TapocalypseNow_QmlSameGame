@@ -151,6 +151,22 @@ if(BUILD_TESTING)
 
     add_test(NAME HighScoreManagerTests COMMAND HighScoreManagerTests)
 
+    qt_add_executable(EndToEndTests
+        tests/test_e2e.cpp
+    )
+
+    target_link_libraries(EndToEndTests
+        PRIVATE
+            TapocalypseQml
+            TapocalypseQmlplugin
+            Qt6::Gui
+            Qt6::Quick
+            Qt6::Test
+    )
+
+    add_test(NAME EndToEndTests COMMAND EndToEndTests)
+    set_tests_properties(EndToEndTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
     if(TAPOCALYPSE_ENABLE_COVERAGE)
         find_program(GCOVR_EXECUTABLE gcovr)
         find_program(GCOV_EXECUTABLE gcov)
@@ -175,7 +191,7 @@ if(BUILD_TESTING)
                     --json-summary ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/summary.json
                     --json-summary-pretty
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests
+                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests EndToEndTests
                 USES_TERMINAL
                 COMMENT "Running tests and generating text/json coverage report"
             )
@@ -196,7 +212,7 @@ if(BUILD_TESTING)
                     --json-summary ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/summary.json
                     --json-summary-pretty
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests
+                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests EndToEndTests
                 USES_TERMINAL
                 COMMENT "Running tests and generating HTML coverage summary"
             )
