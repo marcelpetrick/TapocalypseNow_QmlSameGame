@@ -21,18 +21,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux · Qt 6.11
+          - name: Linux · Qt 6.12
             os: ubuntu-24.04
-            qt: 6.11.3
+            qt: 6.12.0
           - name: Linux · Qt 6.5 (minimum)
             os: ubuntu-22.04
             qt: 6.5.3
-          - name: Windows · Qt 6.11
+          - name: Windows · Qt 6.12
             os: windows-2022
-            qt: 6.11.3
-          - name: macOS · Qt 6.11
+            qt: 6.12.0
+          - name: macOS · Qt 6.12
             os: macos-15
-            qt: 6.11.3
+            qt: 6.12.0
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,6 +48,9 @@ jobs:
         with:
           version: ${{ matrix.qt }}
           cache: true
+          # aqtinstall 3.3.0 (latest release) cannot read the per-architecture Windows repository layout used since
+          # Qt 6.11; the fix (miurahr/aqtinstall#1000) is merged but unreleased, so pin that upstream commit.
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@076e1659807d0b362a3ed684d54c2e9c775eb9c7
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ runner.os == 'Linux' && '-G Ninja' || '' }}

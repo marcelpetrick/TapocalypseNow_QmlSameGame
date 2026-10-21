@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  QT_VERSION: 6.11.3
+  QT_VERSION: 6.12.0
 
 jobs:
   package:
@@ -42,6 +42,9 @@ jobs:
         with:
           version: ${{ env.QT_VERSION }}
           cache: true
+          # aqtinstall 3.3.0 (latest release) cannot read the per-architecture Windows repository layout used since
+          # Qt 6.11; the fix (miurahr/aqtinstall#1000) is merged but unreleased, so pin that upstream commit.
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@076e1659807d0b362a3ed684d54c2e9c775eb9c7
 
       - name: Resolve version
         id: version
