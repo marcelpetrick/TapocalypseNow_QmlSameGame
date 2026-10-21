@@ -599,7 +599,18 @@ configure_coverage_project() {
     fi
 
     log "Configuring dedicated coverage build in '${COVERAGE_BUILD_DIR}'."
+
+    # gcov notes and counters are compiler-version specific, and orphaned objects
+    # from older configurations are never rebuilt. Start fresh on a toolchain change.
+    local compiler_stamp="${COVERAGE_BUILD_DIR}/.tapocalypse-compiler"
+    local compiler_id
+    compiler_id="$("${CXX:-c++}" --version 2>/dev/null | head -n 1)"
+    if [[ -d "${COVERAGE_BUILD_DIR}" && "$(cat "${compiler_stamp}" 2>/dev/null)" != "${compiler_id}" ]]; then
+        log "Compiler changed or unknown for '${COVERAGE_BUILD_DIR}'; wiping the coverage tree."
+        rm -rf "${COVERAGE_BUILD_DIR}"
+    fi
     mkdir -p "${COVERAGE_BUILD_DIR}" || return 1
+    printf '%s\n' "${compiler_id}" > "${compiler_stamp}"
 
     run_command "Running CMake coverage configure step" "${cmd[@]}"
 }
@@ -691,6 +702,10 @@ generate_coverage_report() {
         mark_result "Open Coverage" "SKIP" "Skipped because coverage generation failed"
         return 1
     }
+
+    # Counters from an earlier run (or an older compiler) do not match freshly
+    # rebuilt notes files and make gcov abort, so always start from zero.
+    find "${COVERAGE_BUILD_DIR}" -name '*.gcda' -delete
 
     if ! run_command "Running coverage tests" "${CTEST_COMMAND}" --test-dir "${COVERAGE_BUILD_DIR}" --output-on-failure; then
         mark_result "Coverage" "FAIL" "Coverage tests failed"
