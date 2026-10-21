@@ -139,8 +139,9 @@ Popup {
             objectName: "scoresView"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredHeight: root.unit * 2 * 10
-            Layout.minimumHeight: root.unit * 4
+            // Grow with the entries (up to the full top ten) instead of reserving empty space.
+            Layout.preferredHeight: count * root.unit * 2
+            visible: count > 0
             clip: true
             model: root.highScoreService ? root.highScoreService.scores : []
 
