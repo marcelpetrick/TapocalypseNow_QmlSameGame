@@ -8,10 +8,18 @@ ApplicationWindow {
 
     property int gridCols: 16
     property int gridRows: 10
+    // Full screen is the default (kiosk / embedded targets); --windowed opts out for desktop use.
+    readonly property bool windowed: Qt.application.arguments.indexOf("--windowed") >= 0
+    // One scale unit drives every size, so the HUD and dialogs follow the screen.
+    readonly property real unit: Math.max(12, Math.min(width / 64, height / 36))
 
-    width: 1920
-    height: 1080
-    visibility: Window.FullScreen
+    // Start at the screen size so the first layout pass is already correct; in windowed mode
+    // use a comfortable share of it. Tile positions stay bound, so later resizes reflow too.
+    width: windowed ? Math.min(1280, Screen.desktopAvailableWidth) : Screen.width
+    height: windowed ? Math.min(800, Screen.desktopAvailableHeight) : Screen.height
+    minimumWidth: 480
+    minimumHeight: 360
+    visibility: windowed ? Window.Windowed : Window.FullScreen
     visible: true
     title: "Tapocalypse"
     color: "#07080F" // deep space
@@ -28,7 +36,7 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 88
+        height: hud.height + 2 * root.unit
         opacity: 0.12
 
         gradient: Gradient {
@@ -51,52 +59,83 @@ ApplicationWindow {
 
     }
 
-    // HUD
-    RowLayout {
+    // HUD: score on the left, actions on the right; wraps onto two rows on narrow screens.
+    Flow {
+        id: hud
+
         anchors.top: parent.top
-        anchors.topMargin: 18
+        anchors.topMargin: root.unit
         anchors.left: parent.left
-        anchors.leftMargin: 24
-        spacing: 24
+        anchors.right: parent.right
+        anchors.leftMargin: root.unit * 1.5
+        anchors.rightMargin: root.unit * 1.5
+        spacing: root.unit
 
-        Label {
-            text: "Score: " + game.score
-            font.pixelSize: 28
-            color: "#7dfcff"
+        Row {
+            id: stats
+
+            spacing: root.unit * 1.5
+
+            Label {
+                text: "Score: " + game.score
+                font.pixelSize: root.unit * 1.6
+                color: "#7dfcff"
+            }
+
+            Label {
+                text: "Moves: " + game.moves
+                font.pixelSize: root.unit * 1.6
+                color: "#d0a2ff"
+            }
+
+            Label {
+                text: "Game Over"
+                font.pixelSize: root.unit * 1.6
+                color: "#ff7bd5"
+                visible: game.gameOver
+            }
+
         }
 
-        Label {
-            text: "Moves: " + game.moves
-            font.pixelSize: 28
-            color: "#d0a2ff"
-        }
-
-        Label {
-            text: game.gameOver ? "Game Over" : ""
-            font.pixelSize: 28
-            color: "#ff7bd5"
-            visible: game.gameOver
-        }
-
+        // Pushes the buttons to the right edge while there is room on the first row.
         Item {
-            Layout.fillWidth: true
+            width: Math.max(0, hud.width - stats.width - actions.width - 2 * hud.spacing - 1)
+            height: 1
         }
 
-        Button {
-            text: "New Game"
-            onClicked: {
-                game.registerUserAction();
-                console.log("[Main] New Game clicked");
-                game.reset();
-            }
-        }
+        Row {
+            id: actions
 
-        Button {
-            text: "Highscores"
-            onClicked: {
-                game.registerUserAction();
-                scoreDialog.openForBrowsing();
+            spacing: root.unit * 0.5
+
+            Button {
+                text: "New Game"
+                font.pixelSize: root.unit
+                onClicked: {
+                    game.registerUserAction();
+                    game.reset();
+                }
             }
+
+            Button {
+                text: "End Run"
+                font.pixelSize: root.unit
+                enabled: !game.gameOver && !game.busy && game.moves > 0
+                onClicked: {
+                    game.registerUserAction();
+                    game.endRun();
+                }
+            }
+
+            Button {
+                text: "Highscores"
+                font.pixelSize: root.unit
+                onClicked: {
+                    game.registerUserAction();
+                    scoreDialog.openForBrowsing();
+                }
+            }
+
         }
 
     }
@@ -104,31 +143,30 @@ ApplicationWindow {
     // Board container with glow lines
     Rectangle {
         anchors.fill: boardFrame
-        anchors.margins: -6
-        radius: boardFrame.radius + 6
+        anchors.margins: -root.unit * 0.3
+        radius: boardFrame.radius + root.unit * 0.3
         color: "#285500ea"
     }
 
     Rectangle {
         id: boardFrame
 
-        anchors.fill: parent
-        anchors.margins: 120
-        radius: 24
+        anchors.top: header.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: root.unit * 1.5
+        radius: root.unit * 1.2
         color: "#0B0D19"
         border.color: "#14204F"
         border.width: 2
 
+        // GameBoard fits the largest square cell into both dimensions and centres the grid.
         GameBoard {
             id: game
 
-            // aspect = cols / rows (how many tiles wide vs tall)
-            readonly property real aspect: cols / rows
-
-            anchors.centerIn: parent
-            // shrink/grow here: 0.55 = 55% of frame width
-            width: boardFrame.width * 0.55
-            height: width / aspect
+            anchors.fill: parent
+            anchors.margins: root.unit
             rows: root.gridRows
             cols: root.gridCols
             onGameEnded: function(finalScore) {
@@ -142,6 +180,7 @@ ApplicationWindow {
         id: scoreDialog
 
         anchors.centerIn: parent
+        unit: root.unit
         highScoreService: highScoreManager
     }
 
