@@ -8,6 +8,7 @@
 #include <QVector>
 
 class QQuickWindow;
+class FrameProfilerTest;
 
 /**
  * Collects lightweight frame-swap timing samples for opt-in field profiling.
@@ -28,6 +29,9 @@ class FrameProfiler final : public QObject {
     static QByteArray summarize(QVector<qint64> intervalsNs);
 
    private:
+    // The test checks that swaps of a real window reach the sample buffer.
+    friend class ::FrameProfilerTest;
+
     void recordFrame();
     void report();
 

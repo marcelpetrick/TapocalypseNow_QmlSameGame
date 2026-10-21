@@ -1,3 +1,4 @@
+#include <QMutexLocker>
 #include <QQuickWindow>
 #include <QtTest>
 
@@ -33,15 +34,32 @@ void FrameProfilerTest::profiler_recordsSwappedFramesOfARealWindow() {
     QQuickWindow window;
     window.resize(64, 64);
     auto* profiler = new FrameProfiler(&window);
+    const auto recordedFrames = [profiler] {
+        const QMutexLocker lock(&profiler->mutex_);
+        return profiler->intervalsNs_.size();
+    };
+
     window.show();
     QVERIFY(QTest::qWaitForWindowExposed(&window));
-    for (int frame = 0; frame < 5; ++frame) {
-        window.update();
-        QTest::qWait(20);
-    }
-    // The report timer fires every second and must not crash while frames keep arriving.
-    QTest::qWait(1100);
-    QCOMPARE(profiler->parent(), &window);
+    // Keep frames coming: intervals accumulate on the render/GUI thread...
+    QTRY_VERIFY_WITH_TIMEOUT(
+        [&] {
+            window.update();
+            return recordedFrames() >= 3;
+        }(),
+        900);
+
+    // ...until the once-per-second report swaps the buffer out and collection starts over.
+    qsizetype peak = recordedFrames();
+    QTRY_VERIFY_WITH_TIMEOUT(
+        [&] {
+            window.update();
+            const qsizetype now = recordedFrames();
+            const bool drained = now < peak;
+            peak = qMax(peak, now);
+            return drained;
+        }(),
+        3000);
 }
 
 int main(int argc, char** argv) {
