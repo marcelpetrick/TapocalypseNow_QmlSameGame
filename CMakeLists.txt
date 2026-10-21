@@ -97,16 +97,43 @@ target_link_libraries(Tapocalypse
         Qt6::Quick
 )
 
-# Put runtime in bin/ and use a lowercase binary name to avoid clashes
+# Put runtime in bin/ and use a lowercase binary name to avoid clashes. A GUI-subsystem executable on Windows and
+# an app bundle on macOS, so neither opens a console window.
 set_target_properties(Tapocalypse PROPERTIES
     OUTPUT_NAME tapocalypse
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    WIN32_EXECUTABLE TRUE
+    MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_BUNDLE_NAME Tapocalypse
+    MACOSX_BUNDLE_GUI_IDENTIFIER it.marcelpetrick.tapocalypse
+    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
 )
 
+include(GNUInstallDirs)
 install(TARGETS Tapocalypse
     BUNDLE DESTINATION .
-    RUNTIME DESTINATION .
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# With TAPOCALYPSE_DEPLOY_QT, 'cmake --install' also copies the Qt libraries, plugins and QML modules the app needs,
+# giving a self-contained folder or bundle for releases. Off by default on Linux, where distribution Qt packages are
+# shared system libraries; the release workflow enables it with the official Qt binaries.
+if(WIN32 OR APPLE)
+    set(_tapocalypse_deploy_default ON)
+else()
+    set(_tapocalypse_deploy_default OFF)
+endif()
+option(TAPOCALYPSE_DEPLOY_QT "Bundle the Qt runtime on 'cmake --install'" ${_tapocalypse_deploy_default})
+
+if(TAPOCALYPSE_DEPLOY_QT)
+    qt_generate_deploy_qml_app_script(
+        TARGET Tapocalypse
+        OUTPUT_SCRIPT tapocalypse_deploy_script
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
+    install(SCRIPT ${tapocalypse_deploy_script})
+endif()
 
 if(BUILD_TESTING)
     qt_add_executable(GameRulesTests
