@@ -1,38 +1,28 @@
-# List of issues, which have to be mended - since no collaboration board is used, I list them here
-* remove the "reset highscore"-button and functionality
-* animations for the collapse are missing
-* game logic is sometimes flawed: all groups of three similar tiles shall be removable
-* add sound effects?
-* when can you enter the highscore?
-* option to abort the game as is: if sufficent score, then enter to highscore
-* logging of the console.log in QtCreator missing - by direct start it logs to stdout
+# Backlog
 
------
+No external board is used; this file is the backlog. Severity: **S1** breaks play or data · **S2** visible defect ·
+**S3** polish / idea.
 
-## Worst Problems
+## Open
 
-1. qml/GameBoard.qml:76: reset() clears visible state but does not stop removeTimer or clear pending removals, so clicking New Game during the pop delay can let the old move mutate the
-    new board when the timer fires at qml/GameBoard.qml:223. Add explicit timer cancellation and a real game-state machine.
-2. qml/GameBoard.qml:75: board state, flood fill, collapse, scoring, animation staging, and rendering all live in one item. That makes it hard to test, hard to reuse, and easy to break
-    while tweaking visuals. Add a separate model/controller layer, ideally with unit-tested pure logic.
-3. README.md:62: no unit tests, no QML tests, no game-rule regression coverage, no persistence tests. For a puzzle game, that is a major quality hole. Add Qt Test coverage for flood
-    fill, collapse, move detection, highscore qualification, and popup flow.
-4. src/HighScoreManager.cpp:71: any score qualifies while fewer than 10 entries exist, including 0, and ties never qualify even though the sort has a tie rule. Add an explicit product
-    rule for zero-score/aborted runs and make qualification consistent with sort order.
-5. qml/ScoreDialog.qml:20: openForBrowsing() just opens the popup; it does not refresh scoresView.model, and Reset Highscores in qml/main.qml:93 does not notify the dialog. Add change
-    notifications from C++ and bind the list to a real model instead of one-off loadScores() calls.
-6. src/main.cpp:7: the app never sets organization/app name, yet storage depends on QStandardPaths::AppDataLocation at src/HighScoreManager.cpp:13. That makes the save path brittle and
-    platform-dependent. Add QCoreApplication::setOrganizationName, setApplicationName, and a documented data migration story.
-7. qml/main.qml:13: the window starts at 1920x1080, the board width is hard-coded to 55%, and the toolbar is a single top row. This will degrade quickly on small laptop screens and high-
-    DPI setups. Add minimum sizes, adaptive layouts, and a board sizing strategy driven by available space.
-8. qml/ScoreDialog.qml:83: Save does not close the popup, does not clear the input, and does not prevent repeated submissions of the same score. Add submit-once protection, input reset,
-    enter-to-submit, and a clear post-save state.
-9. README.md:100: the README explicitly says the quick start is “auto generated, not tested,” and packaging is left to manual windeployqt/macdeployqt. Add a tested build matrix, CI, and
-    at least one reproducible desktop packaging path.
-10. ISSUES.md:1: it mentions animation polish and sound, but not state races, missing tests, stale model bindings, or persistence semantics. Add a proper backlog with severity,
-    reproduction steps, and architecture tasks, not just feature notes.
+| # | Sev | Item | Notes |
+|---|---|---|---|
+| 1 | S3 | Sound effects for pop, fall and game over | Needs Qt Multimedia and audio assets; keep optional (off on embedded targets). |
+| 2 | S3 | Signed and notarized macOS build, signed Windows build | Release archives are unsigned today. |
+| 3 | S3 | Linux AppImage or Flatpak | Release ships a self-contained tarball. |
+| 4 | S3 | Keyboard and gamepad play | Today the board is mouse/touch only. |
+| 5 | S3 | Undo last move | Would need an explicit RULES.md decision on scoring. |
 
-### What Should Be Added
+## Done in the October 2026 hardening pass
 
-The highest-value additions are: a tested game-logic layer, automated tests, a proper highscore model with signals, explicit app metadata, CI/build verification, responsive layout work,
-and a small state machine for game lifecycle (idle, animating, gameOver, submittingScore).
+- Reset-highscores button removed; highscores written atomically; score list never stale; submit-once entry with
+  trimmed names, 20-character limit and Enter-to-save.
+- End Run banks a score early (RULES.md §10).
+- Collapse animation no longer replays the drop-in or blinks; geometry bindings survive animations and resizes.
+- Layout adapts to every window shape; grid never overflows; themed buttons; hover preview of the removable group.
+- `console.log` reaches Qt Creator (stderr forced).
+- New Game during the pop delay can no longer touch the new board (controller cancels every phase timer on reset).
+- Rule conformance tests against RULES.md and end-to-end tests of the shipped QML.
+- CI on Linux, Windows and macOS (Qt 6.12 and the 6.5 minimum) and tagged releases with self-contained archives.
+
+See [PLAN.md](PLAN.md) for the full list with details.
