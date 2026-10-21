@@ -76,6 +76,8 @@ QVariantList GameBoardController::movingTiles() const { return m_movingTiles; }
 
 QVariantMap GameBoardController::hintSet() const { return m_hintSet; }
 
+QVariantMap GameBoardController::hoverSet() const { return m_hoverSet; }
+
 int GameBoardController::hintPulseEpoch() const { return m_hintPulseEpoch; }
 
 const GameGrid& GameBoardController::gridState() const { return m_gridState; }
@@ -96,12 +98,15 @@ void GameBoardController::setGameOver(bool gameOver) {
     if (m_gameOver == gameOver) return;
     m_gameOver = gameOver;
     emit gameOverChanged();
+    updateHoverSet();
 }
 
 void GameBoardController::setBusy(bool busy) {
     if (m_busy == busy) return;
     m_busy = busy;
     emit busyChanged();
+    // Hide the preview while a move resolves and re-evaluate it on the settled board.
+    updateHoverSet();
 }
 
 void GameBoardController::setGridState(const GameGrid& grid) {
@@ -133,6 +138,28 @@ void GameBoardController::setMovingTiles(const QVariantList& movingTiles) {
 void GameBoardController::setHintSet(const QVariantMap& hintSet) {
     m_hintSet = hintSet;
     emit hintSetChanged();
+}
+
+void GameBoardController::updateHoverSet() {
+    QVariantMap next;
+    if (!m_busy && !m_gameOver && inBounds(m_hoverRow, m_hoverCol)) {
+        const auto analysis = GameRules::analyzeSelection(m_gridState, m_hoverRow, m_hoverCol, m_minimumGroupSize);
+        if (analysis.valid) next = toSelectionMap(analysis.group);
+    }
+    if (next == m_hoverSet) return;
+    m_hoverSet = next;
+    emit hoverSetChanged();
+}
+
+void GameBoardController::setHoverCell(int row, int col) {
+    if (row == m_hoverRow && col == m_hoverCol) return;
+    m_hoverRow = row;
+    m_hoverCol = col;
+    updateHoverSet();
+}
+
+void GameBoardController::leaveHoverCell(int row, int col) {
+    if (row == m_hoverRow && col == m_hoverCol) setHoverCell(-1, -1);
 }
 
 void GameBoardController::incrementHintPulseEpoch() {
@@ -306,6 +333,7 @@ void GameBoardController::reset() {
     setGameOver(false);
     setGridState(buildPlayableGrid());
     setGameOver(m_gridState.isEmpty() || !GameRules::hasMoves(m_gridState, m_minimumGroupSize));
+    updateHoverSet();
     restartHintIdleTimer();
 }
 
@@ -376,6 +404,7 @@ void GameBoardController::setGridForTesting(const GameGrid& grid) {
     setGameOver(false);
     setGridState(grid);
     setGameOver(m_gridState.isEmpty() || !GameRules::hasMoves(m_gridState, m_minimumGroupSize));
+    updateHoverSet();
     restartHintIdleTimer();
 }
 

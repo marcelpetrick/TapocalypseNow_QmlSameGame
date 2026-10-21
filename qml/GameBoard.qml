@@ -25,6 +25,7 @@ Item {
     readonly property var shakeSet: controller.shakeSet
     readonly property var hiddenSet: controller.hiddenSet
     readonly property var hintSet: controller.hintSet
+    readonly property var hoverSet: controller.hoverSet
     readonly property var tilePalette: ["#00E5FF", "#FF00E5", "#00FFAE", "#FFD400", "#8B80FF", "#FF5E5B"]
     // Incremented whenever a fresh board is dealt so tiles can play their intro.
     property int dealEpoch: 0
@@ -94,10 +95,17 @@ Item {
                 popActive: board.popSet[key] === true
                 shakeActive: board.shakeSet[key] === true
                 hintActive: board.hintSet[key] === true
+                hoverActive: board.hoverSet[key] === true
                 hintPulseEpoch: controller.hintPulseEpoch
                 spawnEpoch: board.dealEpoch
                 onClicked: {
                     controller.removeGroup(r, c);
+                }
+                onHovered: function(inside) {
+                    if (inside)
+                        controller.setHoverCell(r, c);
+                    else
+                        controller.leaveHoverCell(r, c);
                 }
             }
 

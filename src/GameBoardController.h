@@ -1,10 +1,11 @@
 #pragma once
 
+#include <QtQml/qqmlregistration.h>
+
 #include <QObject>
 #include <QTimer>
 #include <QVariantList>
 #include <QVariantMap>
-#include <QtQml/qqmlregistration.h>
 
 #include "GameRules.h"
 
@@ -35,6 +36,7 @@ class GameBoardController : public QObject {
     Q_PROPERTY(QVariantMap hiddenSet READ hiddenSet NOTIFY hiddenSetChanged)
     Q_PROPERTY(QVariantList movingTiles READ movingTiles NOTIFY movingTilesChanged)
     Q_PROPERTY(QVariantMap hintSet READ hintSet NOTIFY hintSetChanged)
+    Q_PROPERTY(QVariantMap hoverSet READ hoverSet NOTIFY hoverSetChanged)
     Q_PROPERTY(int hintPulseEpoch READ hintPulseEpoch NOTIFY hintPulseEpochChanged)
 
    public:
@@ -90,6 +92,8 @@ class GameBoardController : public QObject {
     QVariantList movingTiles() const;
     /// @return Lookup map for tiles highlighted by the idle hint cycle, keyed by @c "row,col".
     QVariantMap hintSet() const;
+    /// @return Lookup map for the removable group under the pointer, keyed by @c "row,col"; empty when none.
+    QVariantMap hoverSet() const;
     /// @return Monotonic pulse value incremented whenever a new idle hint flash is triggered.
     int hintPulseEpoch() const;
 
@@ -129,6 +133,21 @@ class GameBoardController : public QObject {
      * state and @ref gameEnded is emitted with the current score, exactly as if no move were left.
      */
     Q_INVOKABLE void endRun();
+    /**
+     * @brief Preview the group under the pointer.
+     * @param row Zero-based row index, or a negative value when the pointer left the board.
+     * @param col Zero-based column index.
+     *
+     * @ref hoverSet holds the group at this cell when it is removable and the board accepts moves, and is empty
+     * otherwise. The preview is re-evaluated after each resolved move, since the board under the pointer changes.
+     */
+    Q_INVOKABLE void setHoverCell(int row, int col);
+    /**
+     * @brief Clear the preview when the pointer leaves a cell, unless another cell already took over.
+     * @param row Zero-based row index of the cell that was left.
+     * @param col Zero-based column index of the cell that was left.
+     */
+    Q_INVOKABLE void leaveHoverCell(int row, int col);
     /**
      * @brief Execute one deterministic automated benchmark action.
      *
@@ -191,6 +210,8 @@ class GameBoardController : public QObject {
     void movingTilesChanged();
     /// Emitted when the idle hint selection changes.
     void hintSetChanged();
+    /// Emitted when the hover preview changes.
+    void hoverSetChanged();
     /// Emitted when the idle hint pulse epoch increments.
     void hintPulseEpochChanged();
     /**
@@ -224,6 +245,7 @@ class GameBoardController : public QObject {
     void setMovingTiles(const QVariantList& movingTiles);
     void setHintSet(const QVariantMap& hintSet);
     void incrementHintPulseEpoch();
+    void updateHoverSet();
 
     void clearSelections();
     void clearPhaseState();
@@ -273,6 +295,9 @@ class GameBoardController : public QObject {
     QVariantMap m_hiddenSet;
     QVariantList m_movingTiles;
     QVariantMap m_hintSet;
+    QVariantMap m_hoverSet;
+    int m_hoverRow = -1;
+    int m_hoverCol = -1;
     int m_hintPulseEpoch = 0;
 
     int m_pendingRow = -1;

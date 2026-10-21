@@ -14,6 +14,8 @@ Item {
     property bool popActive: false
     property bool shakeActive: false
     property bool hintActive: false
+    // part of the removable group under the pointer
+    property bool hoverActive: false
     property int hintPulseEpoch: 0
     // incremented by GameBoard when a new board is dealt; plays the drop-in intro
     property int spawnEpoch: 0
@@ -27,6 +29,7 @@ Item {
     property real effectOpacity: 1
 
     signal clicked()
+    signal hovered(bool inside)
 
     // visibility follows content
     visible: colorIndex >= 0
@@ -70,8 +73,8 @@ Item {
 
         anchors.fill: parent
         radius: width * 0.22
-        border.width: 2
-        border.color: "#1f2a6b"
+        border.width: tile.hoverActive ? 3 : 2
+        border.color: tile.hoverActive ? Qt.lighter(tile.selectedColor, 1.6) : "#1f2a6b"
         opacity: 0.98 * tile.effectOpacity
         scale: (pressedArea.pressed ? 0.94 : 1) * tile.effectScale
 
@@ -117,7 +120,11 @@ Item {
         enabled: tile.interactive
         hoverEnabled: true
         onClicked: tile.clicked()
-        onEntered: hoverGlow.running = true
+        onEntered: {
+            hoverGlow.running = true;
+            tile.hovered(true);
+        }
+        onExited: tile.hovered(false)
     }
 
     // hover ripple

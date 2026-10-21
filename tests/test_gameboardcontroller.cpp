@@ -39,6 +39,7 @@ class GameBoardControllerTest : public QObject {
     void internalCallbacks_coverDefensiveBranches();
     void endRun_endsPlayableRunOnceAndIgnoresBusyOrFinishedBoards();
     void benchmarkStep_playsFirstGroupAndRestartsFinishedGames();
+    void hover_previewsRemovableGroupsOnly();
 };
 
 void GameBoardControllerTest::setters_emitOnlyOnValueChanges() {
@@ -193,11 +194,11 @@ void GameBoardControllerTest::removeGroup_runsFullMoveFlowAndScores() {
     QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), 100);
 
     QCOMPARE(controller.gridState(), makeGrid({
-                                     {0, -1, 2, -1},
-                                     {3, -1, 3, -1},
-                                     {5, 4, 5, -1},
-                                     {6, 7, 9, -1},
-                                 }));
+                                         {0, -1, 2, -1},
+                                         {3, -1, 3, -1},
+                                         {5, 4, 5, -1},
+                                         {6, 7, 9, -1},
+                                     }));
     QCOMPARE(controller.score(), 16);
     QCOMPARE(controller.moves(), 1);
     QVERIFY(controller.gameOver());
@@ -254,11 +255,11 @@ void GameBoardControllerTest::removeGroup_handlesNoFallAndStillPlayableBoards() 
     QCOMPARE(controller.moves(), 1);
     QCOMPARE(controller.score(), 9);
     QCOMPARE(controller.gridState(), makeGrid({
-                                     {-1, -1, -1},
-                                     {0, 1, 2},
-                                     {3, 4, 5},
-                                     {1, 1, 1},
-                                 }));
+                                         {-1, -1, -1},
+                                         {0, 1, 2},
+                                         {3, 4, 5},
+                                         {1, 1, 1},
+                                     }));
 }
 
 void GameBoardControllerTest::pendingSelection_canBecomeInvalidBeforeResolution() {
@@ -471,6 +472,44 @@ void GameBoardControllerTest::benchmarkStep_playsFirstGroupAndRestartsFinishedGa
     controller.m_gridState = makeGrid({{1, 2}});
     controller.benchmarkStep();
     QCOMPARE(controller.gridState().size(), 4);
+}
+
+void GameBoardControllerTest::hover_previewsRemovableGroupsOnly() {
+    GameBoardController controller;
+    controller.setAnimationTimingsForTesting(20, 20, 20, 20, 1);
+    controller.setHintTimingsForTesting(1000, 1000);
+    controller.setGridForTesting(makeGrid({
+        {1, 1, 1, 2},
+        {3, 4, 4, 4},
+        {5, 6, 7, 8},
+    }));
+    QSignalSpy changed(&controller, &GameBoardController::hoverSetChanged);
+
+    controller.setHoverCell(0, 0);
+    QCOMPARE(controller.hoverSet().size(), 3);
+    controller.setHoverCell(0, 1);
+    QCOMPARE(changed.count(), 1);  // same group: no re-emit
+
+    controller.setHoverCell(0, 3);
+    QVERIFY(controller.hoverSet().isEmpty());  // a single tile is not removable
+    controller.leaveHoverCell(1, 1);           // leaving a cell we are not on changes nothing
+    controller.setHoverCell(1, 2);
+    QCOMPARE(controller.hoverSet().size(), 3);
+    controller.leaveHoverCell(1, 2);
+    QVERIFY(controller.hoverSet().isEmpty());
+
+    // Hidden while a move resolves, re-evaluated on the settled board under the same pointer position.
+    controller.setHoverCell(0, 0);
+    controller.removeGroup(0, 0);
+    QVERIFY(controller.hoverSet().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), 1000);
+    QCOMPARE(controller.gridState()[0][0], -1);
+    QVERIFY(controller.hoverSet().isEmpty());
+    controller.setHoverCell(1, 1);
+    QCOMPARE(controller.hoverSet().size(), 3);
+
+    controller.endRun();
+    QVERIFY(controller.hoverSet().isEmpty());
 }
 
 QTEST_GUILESS_MAIN(GameBoardControllerTest)

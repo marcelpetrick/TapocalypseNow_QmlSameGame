@@ -131,6 +131,11 @@ void EndToEndTest::legalClick_removesWholeGroupAndScoresSquare() {
         {0, 0, 4, 5},
     }));
 
+    // Hovering previews exactly the group the click will remove.
+    QTest::mouseMove(window(), tileCenter(2, 1));
+    QTRY_COMPARE(controller()->hoverSet().size(), 4);
+    QVERIFY(controller()->hoverSet().contains(QStringLiteral("0,0")));
+
     clickTile(2, 1);
     waitUntilIdle();
 
