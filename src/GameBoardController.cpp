@@ -223,7 +223,6 @@ void GameBoardController::applyFallPhase() {
     }
 
     if (m_pendingMovePlan.fallMotions.isEmpty()) {
-        setGridState(m_pendingMovePlan.afterFallGrid);
         applyShiftPhase();
         return;
     }
@@ -234,6 +233,7 @@ void GameBoardController::applyFallPhase() {
 }
 
 void GameBoardController::applyShiftPhase() {
+    // Single place that publishes the post-fall board, whether or not a fall animation ran.
     setGridState(m_pendingMovePlan.afterFallGrid);
     if (m_pendingMovePlan.shiftMotions.isEmpty()) {
         finishMovePhases();
@@ -397,7 +397,6 @@ void GameBoardController::onRemovePreviewTimer() { startResolvedMove(); }
 void GameBoardController::onRemoveHoldTimer() { applyFallPhase(); }
 
 void GameBoardController::onFallTimer() {
-    setGridState(m_pendingMovePlan.afterFallGrid);
     setMovingTiles({});
     setHiddenSet({});
     applyShiftPhase();
