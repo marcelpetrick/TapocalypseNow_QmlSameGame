@@ -1,5 +1,3 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -23,6 +21,7 @@ Popup {
         open();
         if (!browsing)
             nameField.forceActiveFocus();
+
     }
 
     function openForBrowsing() {
@@ -146,14 +145,9 @@ Popup {
             model: root.highScoreService ? root.highScoreService.scores : []
 
             delegate: Rectangle {
-                id: scoreRow
-
-                required property int index
-                required property var modelData
-
                 height: root.unit * 2
                 width: ListView.view.width
-                color: scoreRow.index % 2 ? "#12142a" : "#0e1125"
+                color: index % 2 ? "#12142a" : "#0e1125"
 
                 RowLayout {
                     anchors.fill: parent
@@ -161,14 +155,14 @@ Popup {
                     anchors.rightMargin: root.unit * 0.5
 
                     Label {
-                        text: (scoreRow.index + 1) + "."
+                        text: (index + 1) + "."
                         font.pixelSize: root.unit
                         color: "#7dfcff"
                         Layout.preferredWidth: root.unit * 2
                     }
 
                     Label {
-                        text: scoreRow.modelData.name
+                        text: modelData.name
                         font.pixelSize: root.unit
                         color: "#d0a2ff"
                         elide: Text.ElideRight
@@ -176,7 +170,7 @@ Popup {
                     }
 
                     Label {
-                        text: scoreRow.modelData.score
+                        text: modelData.score
                         font.pixelSize: root.unit
                         color: "#98ffce"
                     }
