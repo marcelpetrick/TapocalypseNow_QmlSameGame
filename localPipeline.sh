@@ -612,14 +612,15 @@ configure_coverage_project() {
 build_coverage_project() {
     local -a clean_first=()
 
-    # gcov notes are compiler-version specific, and notes of objects that are no longer built are never refreshed.
-    # When the configured compiler changes, drop only gcov artifacts and rebuild from clean.
+    # gcov notes are compiler-version specific, and notes of objects that are no longer built (after a source moved
+    # to another target) are never refreshed but still read by gcovr. When the compiler or the CMake target layout
+    # changes, drop only gcov artifacts and rebuild from clean.
     local compiler_stamp="${COVERAGE_BUILD_DIR}/.tapocalypse-compiler"
     local compiler_path compiler_id
     compiler_path="$(sed -n 's/^CMAKE_CXX_COMPILER:[A-Z]*=//p' "${COVERAGE_BUILD_DIR}/CMakeCache.txt" 2>/dev/null)"
-    compiler_id="${compiler_path} $("${compiler_path:-c++}" --version 2>/dev/null | head -n 1)"
+    compiler_id="${compiler_path} $("${compiler_path:-c++}" --version 2>/dev/null | head -n 1) $(checksum_files "${PROJECT_ROOT}/CMakeLists.txt" | cut -d' ' -f1)"
     if [[ "$(cat "${compiler_stamp}" 2>/dev/null)" != "${compiler_id}" ]]; then
-        log "Coverage compiler changed or unknown; removing gcov data and rebuilding from clean."
+        log "Coverage compiler or target layout changed; removing gcov data and rebuilding from clean."
         find "${COVERAGE_BUILD_DIR}" \( -name '*.gcno' -o -name '*.gcda' \) -type f -delete
         clean_first=(--clean-first)
     fi
