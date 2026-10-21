@@ -73,7 +73,7 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 - [x] README: crisp pitch that makes people want to play, then quick start
 - [x] AGENTS.md: operating manual for coding agents (preflight, procedures, limits)
 - [x] RULES.md: checked against code; End Run specified (§10, §12)
-- [~] GitHub About text and topics (`/githubAbout`) – applied after the release is live
+- [x] GitHub About, homepage (latest release) and ten topics applied (`/githubAbout`)
 
 ## 7. Ship
 
@@ -82,4 +82,7 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
       fall-phase publish order (with regression test), hover refresh on grid/threshold change, End Run guard in
       C++, Windows logging left on the debugger output, tag version stamped into releases, bash < 4.4 array
       expansion, profiler test proves recording (mutation-checked)
-- [ ] Tag `v1.0.0` and publish a public GitHub release
+- [x] Tag `v1.0.0` and publish a public GitHub release
+- [x] Found after release: CI smoke test leaned on the CI Qt install, and native Controls styles ignored the
+      theme on macOS/Windows → realistic smoke test, Basic style pinned, `v1.0.1` published (v1.0.0 marked
+      superseded)
