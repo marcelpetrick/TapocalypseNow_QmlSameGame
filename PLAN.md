@@ -78,5 +78,8 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 ## 7. Ship
 
 - [x] Pipeline green, CI green on Linux (6.12, 6.5), Windows, macOS; pushed to `origin/master`
-- [~] Final self-review of the whole pass (`/code-review` on 64d07a1..HEAD)
+- [x] Final self-review (`/code-review` on 64d07a1..HEAD): 8 findings, all fixed – press-only scale Behavior,
+      fall-phase publish order (with regression test), hover refresh on grid/threshold change, End Run guard in
+      C++, Windows logging left on the debugger output, tag version stamped into releases, bash < 4.4 array
+      expansion, profiler test proves recording (mutation-checked)
 - [ ] Tag `v1.0.0` and publish a public GitHub release
