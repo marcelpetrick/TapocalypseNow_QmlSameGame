@@ -1,8 +1,6 @@
 #include <QtTest>
 
-#define private public
 #include "GameBoardController.h"
-#undef private
 
 namespace {
 

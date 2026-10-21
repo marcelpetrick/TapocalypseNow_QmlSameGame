@@ -84,6 +84,8 @@ struct MovePlan {
  *
  * This class contains no UI dependencies and is intended to stay unit-testable.
  */
+class GameRulesTest;
+
 class GameRules {
    public:
     /// Sentinel value used for empty cells in a board.
@@ -163,6 +165,9 @@ class GameRules {
     static bool hasMoves(const GameGrid& grid, int minimumGroupSize);
 
    private:
+    // White-box tests exercise the internal helpers directly.
+    friend class ::GameRulesTest;
+
     static bool isInBounds(const GameGrid& grid, int row, int col);
     static QVector<BoardPosition> collectGroup(const GameGrid& grid, int row, int col);
     static QVector<TileMotion> buildFallMotions(const GameGrid& fromGrid, const GameGrid& toGrid);

@@ -19,6 +19,8 @@
  * @ref GameRules::kEmptyCell. Selection maps use keys in the form @c "row,col" with boolean @c true values. Motion
  * lists contain maps with @c color, @c fromRow, @c fromCol, @c toRow, @c toCol, and @c duration fields.
  */
+class GameBoardControllerTest;
+
 class GameBoardController : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -223,6 +225,9 @@ class GameBoardController : public QObject {
     void gameEnded(int score);
 
    private:
+    // White-box tests drive the internal move phases directly.
+    friend class ::GameBoardControllerTest;
+
     static constexpr int kColorCount = 6;
     static constexpr int kDefaultRemovePreviewMs = 220;
     static constexpr int kDefaultRemoveHoldMs = 200;

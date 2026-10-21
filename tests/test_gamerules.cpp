@@ -1,8 +1,6 @@
 #include <QtTest>
 
-#define private public
 #include "GameRules.h"
-#undef private
 
 namespace {
 
@@ -86,9 +84,9 @@ void GameRulesTest::functions_handleEmptyAndIrregularInput() {
                                                 }),
                                                 {{0, 0}, {9, 9}});
     QCOMPARE(removed, makeGrid({
-                         {-1, 2},
-                         {3, 4},
-                     }));
+                          {-1, 2},
+                          {3, 4},
+                      }));
 
     QVERIFY(GameRules::buildFallMotions(emptyGrid, emptyGrid).isEmpty());
     QVERIFY(GameRules::buildFallMotions(irregularGrid, irregularGrid).isEmpty());
