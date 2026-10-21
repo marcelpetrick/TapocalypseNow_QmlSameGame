@@ -28,6 +28,9 @@ struct HighScoreEntry {
  */
 class HighScoreManager : public QObject {
     Q_OBJECT
+    /// Current scoreboard in the same shape as @ref loadScores. Notifies on every change.
+    Q_PROPERTY(QVariantList scores READ loadScores NOTIFY scoresChanged)
+
    public:
     /**
      * @brief Create a manager that stores scores in the default application data location.
@@ -46,7 +49,7 @@ class HighScoreManager : public QObject {
      * @return Variant list of maps with keys @c name, @c score, and @c when. Entries are sorted from highest to
      * lowest score, with older timestamps winning ties. The @c when value is returned as an ISO-8601 string.
      */
-    Q_INVOKABLE QVariantList loadScores();
+    Q_INVOKABLE QVariantList loadScores() const;
     /**
      * @brief Check whether a score would enter the top-ten list.
      * @param score Candidate score.
@@ -58,11 +61,12 @@ class HighScoreManager : public QObject {
      * @brief Insert one score and persist the updated scoreboard.
      * @param name Player name. The stored value is trimmed and length-limited.
      * @param score Score to record. Non-positive scores are ignored.
+     * @return True when the entry was accepted and the scoreboard was written to disk.
      *
      * After insertion the list is sorted by descending score, then by ascending timestamp, truncated to the best ten
-     * entries, and written to disk.
+     * entries, and written to disk atomically. A failed write keeps the previous file intact.
      */
-    Q_INVOKABLE void submitScore(const QString& name, int score);
+    Q_INVOKABLE bool submitScore(const QString& name, int score);
     /**
      * @brief Remove every stored score and persist the empty list.
      *
@@ -70,10 +74,14 @@ class HighScoreManager : public QObject {
      */
     Q_INVOKABLE void resetScores();
 
+   signals:
+    /// Emitted whenever the in-memory scoreboard changes.
+    void scoresChanged();
+
    private:
     QString filePath() const;
     void loadFromDisk();
-    void saveToDisk() const;
+    bool saveToDisk() const;
 
     QString m_storageFilePath;
     QVector<HighScoreEntry> m_scores;

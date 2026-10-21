@@ -1,11 +1,13 @@
 #include "HighScoreManager.h"
 
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <algorithm>
 
@@ -47,7 +49,7 @@ void HighScoreManager::loadFromDisk() {
     if (m_scores.size() > kMaxEntries) m_scores.resize(kMaxEntries);
 }  // GCOVR_EXCL_LINE
 
-void HighScoreManager::saveToDisk() const {
+bool HighScoreManager::saveToDisk() const {
     QJsonArray arr;
     for (const auto& e : m_scores) {
         QJsonObject o;
@@ -56,15 +58,17 @@ void HighScoreManager::saveToDisk() const {
         o.insert("when", static_cast<double>(e.when));
         arr.push_back(o);
     }
-    QJsonDocument doc(arr);
-    QFile f(filePath());
-    if (f.open(QIODevice::WriteOnly)) {
-        f.write(doc.toJson());
-        f.close();
+    // QSaveFile writes to a temporary file and renames it on commit, so a crash or a full disk never truncates the
+    // existing scoreboard.
+    QSaveFile f(filePath());
+    if (!f.open(QIODevice::WriteOnly) || f.write(QJsonDocument(arr).toJson()) < 0 || !f.commit()) {
+        qWarning().noquote() << "Tapocalypse: could not save highscores to" << f.fileName() << "-" << f.errorString();
+        return false;
     }
+    return true;
 }
 
-QVariantList HighScoreManager::loadScores() {
+QVariantList HighScoreManager::loadScores() const {
     QVariantList out;
     for (const auto& e : m_scores) {
         QVariantMap m;
@@ -83,8 +87,8 @@ bool HighScoreManager::qualifies(int score) const {
     return score > minScore;
 }
 
-void HighScoreManager::submitScore(const QString& name, int score) {
-    if (score <= 0) return;
+bool HighScoreManager::submitScore(const QString& name, int score) {
+    if (score <= 0) return false;
 
     HighScoreEntry e{name.trimmed().left(20), score, QDateTime::currentMSecsSinceEpoch()};  // GCOVR_EXCL_BR_LINE
     m_scores.push_back(e);
@@ -93,10 +97,12 @@ void HighScoreManager::submitScore(const QString& name, int score) {
         return a.score > b.score;
     });
     if (m_scores.size() > kMaxEntries) m_scores.resize(kMaxEntries);
-    saveToDisk();
+    emit scoresChanged();
+    return saveToDisk();
 }
 
 void HighScoreManager::resetScores() {
     m_scores.clear();
+    emit scoresChanged();
     saveToDisk();
 }

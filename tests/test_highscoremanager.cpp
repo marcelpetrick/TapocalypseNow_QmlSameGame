@@ -1,5 +1,6 @@
 #include <QCoreApplication>
 #include <QFile>
+#include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -22,6 +23,7 @@ class HighScoreManagerTest : public QObject {
     void submitScore_sortsTiesAndKeepsTopTen();
     void resetScores_clearsPersistedEntries();
     void directoryPath_doesNotCrashLoadOrSave();
+    void submitScore_reportsResultAndNotifies();
 
    private:
     std::unique_ptr<QTemporaryDir> m_tempDir;
@@ -153,8 +155,25 @@ void HighScoreManagerTest::directoryPath_doesNotCrashLoadOrSave() {
 
     HighScoreManager manager(dir.path());
     QCOMPARE(manager.loadScores().size(), 0);
-    manager.submitScore(QStringLiteral("Ada"), 42);
+    QVERIFY(!manager.submitScore(QStringLiteral("Ada"), 42));
     QCOMPARE(manager.loadScores().size(), 1);
+    QVERIFY(dir.exists());
+}
+
+void HighScoreManagerTest::submitScore_reportsResultAndNotifies() {
+    HighScoreManager manager = createManager();
+    QSignalSpy changed(&manager, &HighScoreManager::scoresChanged);
+
+    QVERIFY(!manager.submitScore(QStringLiteral("Zero"), 0));
+    QCOMPARE(changed.count(), 0);
+
+    QVERIFY(manager.submitScore(QStringLiteral("Ada"), 42));
+    QCOMPARE(changed.count(), 1);
+    QCOMPARE(manager.property("scores").toList().size(), 1);
+
+    manager.resetScores();
+    QCOMPARE(changed.count(), 2);
+    QVERIFY(manager.property("scores").toList().isEmpty());
 }
 
 HighScoreManager HighScoreManagerTest::createManager() const { return HighScoreManager(storageFilePath()); }
