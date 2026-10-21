@@ -50,6 +50,7 @@ qt_add_qml_module(TapocalypseQml
     URI Tapocalypse
     VERSION 1.0
     RESOURCE_PREFIX /
+    OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Tapocalypse
     SOURCES
         src/GameBoardController.cpp
         src/GameBoardController.h
