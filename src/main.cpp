@@ -21,6 +21,10 @@
 Q_IMPORT_QML_PLUGIN(TapocalypsePlugin)
 
 int main(int argc, char* argv[]) {
+    // Without a terminal (e.g. Qt Creator's output pane) Qt may route qDebug/console.log to the system journal.
+    // Keep logs on stderr where IDEs and shells show them, unless the user chose otherwise.
+    if (!qEnvironmentVariableIsSet("QT_FORCE_STDERR_LOGGING")) qputenv("QT_FORCE_STDERR_LOGGING", "1");
+
     QGuiApplication app(argc, argv);
     // The application name selects the highscore directory. It matches the binary name Qt used implicitly before,
     // so existing scoreboards stay where they are even if the executable is renamed.
