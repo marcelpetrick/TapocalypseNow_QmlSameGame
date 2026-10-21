@@ -368,7 +368,8 @@ void GameBoardController::removeGroup(int row, int col) {
 void GameBoardController::registerUserAction() { restartHintIdleTimer(); }
 
 void GameBoardController::endRun() {
-    if (m_busy || m_gameOver) return;
+    // RULES.md §10: only a run in progress, with at least one move, and never while a move resolves.
+    if (m_busy || m_gameOver || m_moves == 0) return;
 
     stopHintCycle();
     clearSelections();

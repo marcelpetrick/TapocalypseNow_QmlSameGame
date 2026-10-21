@@ -422,6 +422,10 @@ void GameBoardControllerTest::endRun_endsPlayableRunOnceAndIgnoresBusyOrFinished
     }));
     QSignalSpy endedSpy(&controller, &GameBoardController::gameEnded);
 
+    controller.endRun();  // no move yet
+    QVERIFY(!controller.gameOver());
+    QCOMPARE(endedSpy.count(), 0);
+
     controller.removeGroup(0, 0);
     QVERIFY(controller.busy());
     controller.endRun();
