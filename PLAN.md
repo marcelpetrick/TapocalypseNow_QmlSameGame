@@ -43,7 +43,7 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 - [x] Highscore entry flow: clear post-save state, Enter submits, input reset
 - [x] Console logging in Qt Creator (force stderr output / message pattern)
 - [ ] Sound effects – deferred: needs Qt Multimedia and audio assets; kept in the backlog
-- [ ] Rewrite ISSUES.md as a short, current backlog
+- [x] Rewrite ISSUES.md as a short, current backlog
 
 ## 3. Screen adaptation and UI/UX
 
@@ -62,18 +62,21 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 
 ## 5. Build everywhere and release
 
-- [ ] GitHub Actions CI: Linux, Windows, macOS build + tests
-- [ ] GitHub Actions release: tagged builds packaged per platform and attached to a release
-- [ ] `/updateDependencies` pass (pin Qt and Action versions)
+- [x] GitHub Actions CI: Linux, Windows, macOS build + tests
+- [x] GitHub Actions release: tagged builds packaged per platform and attached to a release
+- [x] `/updateDependencies` pass: Actions pinned to SHAs (checkout 7.0.1, install-qt 4.4.1, upload 7.0.2,
+      download 8.0.2, gh-release 3.0.3), Qt 6.12.0, aqtinstall pinned to upstream 076e1659 (Windows layout fix)
+- [x] Found in CI: `#define private public` broke MSVC linking → friend test classes
 
 ## 6. Documentation ("flight manual" style: quick reference first, checklists, then detail)
 
-- [ ] README: crisp pitch that makes people want to play, then quick start
-- [ ] AGENTS.md: operating manual for coding agents (preflight, procedures, limits)
-- [ ] RULES.md: check against code
-- [ ] GitHub About text and topics (`/githubAbout`)
+- [x] README: crisp pitch that makes people want to play, then quick start
+- [x] AGENTS.md: operating manual for coding agents (preflight, procedures, limits)
+- [x] RULES.md: checked against code; End Run specified (§10, §12)
+- [~] GitHub About text and topics (`/githubAbout`) – applied after the release is live
 
 ## 7. Ship
 
-- [ ] Pipeline green, push to `origin/master`
+- [x] Pipeline green, CI green on Linux (6.12, 6.5), Windows, macOS; pushed to `origin/master`
+- [~] Final self-review of the whole pass (`/code-review` on 64d07a1..HEAD)
 - [ ] Tag `v1.0.0` and publish a public GitHub release
