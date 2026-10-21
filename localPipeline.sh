@@ -30,6 +30,7 @@
 #   ./localPipeline.sh --coverage-build-dir build-coverage
 #   ./localPipeline.sh --generator Ninja --cmake-arg -DCMAKE_PREFIX_PATH=/path/to/Qt
 #   TAPOCALYPSE_PIPELINE_JOBS=8 ./localPipeline.sh
+#   TAPOCALYPSE_COVERAGE_MIN_LINES=95 ./localPipeline.sh   # coverage gate (default 90)
 # -----------------------------------------------------------------------------
 
 set -u
@@ -40,6 +41,7 @@ readonly PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly DEFAULT_BUILD_DIR="${PROJECT_ROOT}/build"
 readonly DEFAULT_COVERAGE_BUILD_DIR="${PROJECT_ROOT}/build-coverage"
 readonly DEFAULT_DOCS_BUILD_DIR="${PROJECT_ROOT}/build-docs"
+readonly COVERAGE_MIN_LINES="${TAPOCALYPSE_COVERAGE_MIN_LINES:-90}"
 readonly STAGE_LOG_DIR="${PROJECT_ROOT}/.localPipeline"
 
 VERBOSE=0
@@ -809,7 +811,11 @@ generate_coverage_report() {
 
     COVERAGE_OK=1
     mark_result "Coverage" "PASS" "Coverage HTML generated successfully in ${COVERAGE_BUILD_DIR}"
-    mark_result "Coverage Gate" "PASS" "Lines ${COVERAGE_LINE_PERCENT}%, functions ${coverage_function_percent}%, branches ${coverage_branch_percent}%"
+    if awk -v actual="${COVERAGE_LINE_PERCENT}" -v minimum="${COVERAGE_MIN_LINES}" 'BEGIN { exit !(actual + 0 >= minimum + 0) }'; then
+        mark_result "Coverage Gate" "PASS" "Lines ${COVERAGE_LINE_PERCENT}% (min ${COVERAGE_MIN_LINES}%), functions ${coverage_function_percent}%, branches ${coverage_branch_percent}%"
+    else
+        mark_result "Coverage Gate" "FAIL" "Lines ${COVERAGE_LINE_PERCENT}% below the ${COVERAGE_MIN_LINES}% minimum"
+    fi
 
     if [[ "${NO_OPEN}" -eq 1 ]]; then
         mark_result "Open Coverage" "SKIP" "Suppressed by --noOpen"
