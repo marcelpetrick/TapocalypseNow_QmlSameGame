@@ -11,7 +11,7 @@ option(TAPOCALYPSE_ENABLE_COVERAGE "Build with gcov/gcovr coverage instrumentati
 # Find the Qt 6.5+ bits we actually use
 find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Quick Qml Test)
 
-qt_standard_project_setup()
+qt_standard_project_setup(REQUIRES 6.5)
 
 if(TAPOCALYPSE_ENABLE_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -24,8 +24,6 @@ endif()
 
 # Shared production code so app and tests execute one instrumented copy.
 add_library(TapocalypseCore STATIC
-    src/GameBoardController.cpp
-    src/GameBoardController.h
     src/GameLogicBridge.cpp
     src/GameLogicBridge.h
     src/GameRules.cpp
@@ -41,6 +39,30 @@ target_link_libraries(TapocalypseCore
 
 target_include_directories(TapocalypseCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+# QML module "Tapocalypse": the UI plus the QML-registered controller. A static library so the app and the
+# end-to-end tests load exactly the same compiled QML.
+qt_add_library(TapocalypseQml STATIC)
+qt_add_qml_module(TapocalypseQml
+    URI Tapocalypse
+    VERSION 1.0
+    RESOURCE_PREFIX /
+    SOURCES
+        src/GameBoardController.cpp
+        src/GameBoardController.h
+    QML_FILES
+        qml/main.qml
+        qml/GameBoard.qml
+        qml/Tile.qml
+        qml/ScoreDialog.qml
+)
+
+target_link_libraries(TapocalypseQml
+    PUBLIC
+        TapocalypseCore
+        Qt6::Qml
+        Qt6::Quick
+)
+
 # App
 qt_add_executable(Tapocalypse
     src/FrameProfiler.cpp
@@ -50,21 +72,11 @@ qt_add_executable(Tapocalypse
 
 target_compile_definitions(Tapocalypse PRIVATE TAPOCALYPSE_VERSION="${PROJECT_VERSION}")
 
-# QML module (resources get compiled into the app)
-qt_add_qml_module(Tapocalypse
-    URI Tapocalypse
-    VERSION 1.0
-    QML_FILES
-        qml/main.qml
-        qml/GameBoard.qml
-        qml/Tile.qml
-        qml/ScoreDialog.qml
-)
-
 # Link the Qt libs needed by QGuiApplication, QML, and Quick
 target_link_libraries(Tapocalypse
     PRIVATE
-        TapocalypseCore
+        TapocalypseQml
+        TapocalypseQmlplugin
         Qt6::Gui
         Qt6::Qml
         Qt6::Quick
@@ -101,7 +113,7 @@ if(BUILD_TESTING)
 
     target_link_libraries(GameBoardControllerTests
         PRIVATE
-            TapocalypseCore
+            TapocalypseQml
             Qt6::Core
             Qt6::Test
     )

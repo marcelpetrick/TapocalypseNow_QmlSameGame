@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QVariantList>
 #include <QVariantMap>
+#include <QtQml/qqmlregistration.h>
 
 #include "GameRules.h"
 
@@ -19,6 +20,7 @@
  */
 class GameBoardController : public QObject {
     Q_OBJECT
+    QML_ELEMENT
 
     Q_PROPERTY(int rows READ rows WRITE setRows NOTIFY rowsChanged)
     Q_PROPERTY(int cols READ cols WRITE setCols NOTIFY colsChanged)

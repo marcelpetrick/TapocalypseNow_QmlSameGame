@@ -3,15 +3,13 @@
  * @brief Application entry point for the Tapocalypse desktop client.
  */
 
-#include <qqml.h>
-
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlExtensionPlugin>
 #include <QQuickWindow>
 
 #include "FrameProfiler.h"
-#include "GameBoardController.h"
 #include "HighScoreManager.h"
 
 /**
@@ -20,6 +18,8 @@
  * @param argv Process argument vector.
  * @return Qt event-loop exit code.
  */
+Q_IMPORT_QML_PLUGIN(TapocalypsePlugin)
+
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
     // The application name selects the highscore directory. It matches the binary name Qt used implicitly before,
@@ -27,8 +27,6 @@ int main(int argc, char* argv[]) {
     QCoreApplication::setApplicationName(QStringLiteral("tapocalypse"));
     QGuiApplication::setApplicationDisplayName(QStringLiteral("Tapocalypse"));
     QCoreApplication::setApplicationVersion(QStringLiteral(TAPOCALYPSE_VERSION));
-
-    qmlRegisterType<GameBoardController>("Tapocalypse", 1, 0, "GameBoardController");
 
     // Declared before the engine so it outlives every QML binding that reads it.
     HighScoreManager hsManager;
