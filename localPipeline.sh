@@ -25,6 +25,7 @@
 #   ./localPipeline.sh
 #   ./localPipeline.sh --verbose
 #   ./localPipeline.sh --noRun
+#   ./localPipeline.sh --noRun --noOpen    # CI / agents: no app, no browser
 #   ./localPipeline.sh --build-dir build-debug --build-type Debug
 #   ./localPipeline.sh --coverage-build-dir build-coverage
 #   ./localPipeline.sh --generator Ninja --cmake-arg -DCMAKE_PREFIX_PATH=/path/to/Qt
@@ -43,6 +44,7 @@ readonly STAGE_LOG_DIR="${PROJECT_ROOT}/.localPipeline"
 
 VERBOSE=0
 NO_RUN=0
+NO_OPEN=0
 BUILD_DIR="${DEFAULT_BUILD_DIR}"
 COVERAGE_BUILD_DIR="${DEFAULT_COVERAGE_BUILD_DIR}"
 DOCS_BUILD_DIR="${DEFAULT_DOCS_BUILD_DIR}"
@@ -86,6 +88,7 @@ Usage: ${SCRIPT_NAME} [options]
 Options:
   --verbose               Print commands and stream tool output
   --noRun                 Do not launch the game after the pipeline
+  --noOpen                Do not hand coverage and Doxygen reports to the desktop opener
   --build-dir PATH        Build directory to configure into (default: ${DEFAULT_BUILD_DIR})
   --coverage-build-dir PATH
                           Coverage build directory (default: ${DEFAULT_COVERAGE_BUILD_DIR})
@@ -669,7 +672,9 @@ generate_doxygen_docs() {
         mark_result "Doxygen Warn" "PASS" "No Doxygen warnings were reported"
     fi
 
-    if open_command="$(detect_open_command)"; then
+    if [[ "${NO_OPEN}" -eq 1 ]]; then
+        mark_result "Open Docs" "SKIP" "Suppressed by --noOpen"
+    elif open_command="$(detect_open_command)"; then
         log "Opening Doxygen docs with '${open_command}'."
         if run_command "Opening Doxygen index.html" "${open_command}" "${docs_index_file}"; then
             OPEN_DOCS_OK=1
@@ -802,7 +807,9 @@ generate_coverage_report() {
     mark_result "Coverage" "PASS" "Coverage HTML generated successfully in ${COVERAGE_BUILD_DIR}"
     mark_result "Coverage Gate" "PASS" "Lines ${COVERAGE_LINE_PERCENT}%, functions ${coverage_function_percent}%, branches ${coverage_branch_percent}%"
 
-    if open_command="$(detect_open_command)"; then
+    if [[ "${NO_OPEN}" -eq 1 ]]; then
+        mark_result "Open Coverage" "SKIP" "Suppressed by --noOpen"
+    elif open_command="$(detect_open_command)"; then
         log "Opening coverage report with '${open_command}'."
         if run_command "Opening coverage index.html" "${open_command}" "${coverage_index_file}"; then
             OPEN_COVERAGE_OK=1
@@ -1058,6 +1065,9 @@ parse_arguments() {
                 ;;
             --noRun)
                 NO_RUN=1
+                ;;
+            --noOpen)
+                NO_OPEN=1
                 ;;
             --build-dir)
                 shift
