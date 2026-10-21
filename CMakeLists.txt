@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(Tapocalypse VERSION 1.0.0 LANGUAGES CXX)
+project(Tapocalypse VERSION 1.0.1 LANGUAGES CXX)
 
 # Version shown by the app and stamped into bundles. Releases pass the tag's version (which may carry a suffix).
 set(TAPOCALYPSE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version string reported by the app")
