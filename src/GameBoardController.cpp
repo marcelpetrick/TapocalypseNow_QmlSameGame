@@ -2,51 +2,9 @@
 
 #include <QRandomGenerator>
 
-namespace {
+#include "VariantConversions.h"
 
-QVariantList toVariantGrid(const GameGrid& grid) {
-    QVariantList rawGrid;
-    rawGrid.reserve(grid.size());
-
-    for (const auto& row : grid) {
-        QVariantList rawRow;
-        rawRow.reserve(row.size());
-        for (const auto cell : row) {
-            rawRow.push_back(cell);
-        }
-        rawGrid.push_back(rawRow);
-    }
-
-    return rawGrid;  // GCOVR_EXCL_LINE
-}  // GCOVR_EXCL_LINE
-
-QVariantMap toSelectionMap(const QVector<BoardPosition>& group) {
-    QVariantMap selection;
-    for (const auto& position : group) {
-        selection.insert(QStringLiteral("%1,%2").arg(position.row).arg(position.col), true);
-    }
-    return selection;  // GCOVR_EXCL_LINE
-}  // GCOVR_EXCL_LINE
-
-QVariantList toMotions(const QVector<TileMotion>& motions, int durationMs) {
-    QVariantList rawMotions;
-    rawMotions.reserve(motions.size());
-
-    for (const auto& motion : motions) {
-        QVariantMap item;
-        item.insert("color", motion.color);
-        item.insert("fromRow", motion.from.row);
-        item.insert("fromCol", motion.from.col);
-        item.insert("toRow", motion.to.row);
-        item.insert("toCol", motion.to.col);
-        item.insert("duration", durationMs);
-        rawMotions.push_back(item);
-    }
-
-    return rawMotions;  // GCOVR_EXCL_LINE
-}  // GCOVR_EXCL_LINE
-
-}  // namespace
+using namespace VariantConversions;
 
 GameBoardController::GameBoardController(QObject* parent) : QObject(parent) {
     m_removePreviewTimer.setParent(this);
@@ -234,7 +192,7 @@ bool GameBoardController::triggerHintFlash() {
 void GameBoardController::hideMotionSources(const QVector<TileMotion>& motions) {
     QVariantMap nextHidden;
     for (const auto& motion : motions) {
-        nextHidden.insert(QStringLiteral("%1,%2").arg(motion.from.row).arg(motion.from.col), true);
+        nextHidden.insert(positionKey(motion.from.row, motion.from.col), true);
     }
     setHiddenSet(nextHidden);
 }
@@ -363,7 +321,7 @@ void GameBoardController::removeGroup(int row, int col) {
     const auto analysis = GameRules::analyzeSelection(m_gridState, row, col, m_minimumGroupSize);
     if (!analysis.valid) {
         QVariantMap shake;
-        shake.insert(QStringLiteral("%1,%2").arg(row).arg(col), true);
+        shake.insert(positionKey(row, col), true);
         setShakeSet(shake);
         m_shakeClearTimer.start(m_shakeClearMs);
         return;

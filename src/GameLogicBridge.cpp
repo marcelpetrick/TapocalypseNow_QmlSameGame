@@ -1,68 +1,9 @@
 #include "GameLogicBridge.h"
 
 #include "GameRules.h"
+#include "VariantConversions.h"
 
-namespace {
-
-GameGrid toGameGrid(const QVariantList& rawGrid) {
-    GameGrid grid;
-    grid.reserve(rawGrid.size());
-
-    for (const auto& rowValue : rawGrid) {
-        const auto rawRow = rowValue.toList();
-        QVector<int> row;
-        row.reserve(rawRow.size());
-        for (const auto& cellValue : rawRow) {
-            row.push_back(cellValue.toInt());
-        }
-        grid.push_back(row);
-    }
-
-    return grid;  // GCOVR_EXCL_LINE
-}  // GCOVR_EXCL_LINE
-
-QVariantList toVariantGrid(const GameGrid& grid) {
-    QVariantList rawGrid;
-    rawGrid.reserve(grid.size());
-
-    for (const auto& row : grid) {
-        QVariantList rawRow;
-        rawRow.reserve(row.size());
-        for (const auto cell : row) {
-            rawRow.push_back(cell);
-        }
-        rawGrid.push_back(rawRow);
-    }
-
-    return rawGrid;  // GCOVR_EXCL_LINE
-}  // GCOVR_EXCL_LINE
-
-QVariantMap toSelectionMap(const QVector<BoardPosition>& group) {
-    QVariantMap selection;
-    for (const auto& position : group) {
-        selection.insert(QStringLiteral("%1,%2").arg(position.row).arg(position.col), true);
-    }
-    return selection;  // GCOVR_EXCL_LINE
-}  // GCOVR_EXCL_LINE
-
-QVariantList toMotions(const QVector<TileMotion>& motions) {
-    QVariantList rawMotions;
-    rawMotions.reserve(motions.size());
-
-    for (const auto& motion : motions) {
-        QVariantMap item;
-        item.insert("color", motion.color);
-        item.insert("fromRow", motion.from.row);
-        item.insert("fromCol", motion.from.col);
-        item.insert("toRow", motion.to.row);
-        item.insert("toCol", motion.to.col);
-        rawMotions.push_back(item);
-    }
-
-    return rawMotions;  // GCOVR_EXCL_LINE
-}  // GCOVR_EXCL_LINE
-
-}  // namespace
+using namespace VariantConversions;
 
 GameLogicBridge::GameLogicBridge(QObject* parent) : QObject(parent) {}
 

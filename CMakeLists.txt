@@ -34,6 +34,7 @@ add_library(TapocalypseCore STATIC
     src/GameRules.h
     src/HighScoreManager.cpp
     src/HighScoreManager.h
+    src/VariantConversions.h
 )
 
 target_link_libraries(TapocalypseCore
