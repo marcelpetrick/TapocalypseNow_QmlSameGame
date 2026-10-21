@@ -135,6 +135,11 @@ void EndToEndTest::legalClick_removesWholeGroupAndScoresSquare() {
     QTest::mouseMove(window(), tileCenter(2, 1));
     QTRY_COMPARE(controller()->hoverSet().size(), 4);
     QVERIFY(controller()->hoverSet().contains(QStringLiteral("0,0")));
+    const QString shotDir = qEnvironmentVariable("TAPOCALYPSE_E2E_SCREENSHOT_DIR");
+    if (!shotDir.isEmpty()) {
+        QTest::qWait(300);
+        window()->grabWindow().save(shotDir + QStringLiteral("/hover-preview.png"));
+    }
 
     clickTile(2, 1);
     waitUntilIdle();
