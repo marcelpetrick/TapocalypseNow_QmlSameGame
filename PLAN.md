@@ -8,18 +8,19 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 - [x] Run `./localPipeline.sh --noRun` and record the starting state
 - [x] Commit formatter drift (`style:` FrameProfiler, main.cpp, Tile.qml)
 - [x] Fix the coverage stage: stale gcov data from an older GCC aborted gcovr
+- [x] Add `--noOpen` so agent/CI runs do not open browser windows
 
 ## 1. Review findings (reviewBranch + /code-review on the whole tree)
 
-- [ ] R1 `src/main.cpp` – `HighScoreManager` is destroyed before the QML engine that references it
-- [ ] R2 `src/HighScoreManager.cpp` – non-atomic save; a failed write wipes the scoreboard silently
-- [ ] R3 `qml/ScoreDialog.qml` – score list is evaluated once and goes stale (reset, browsing)
+- [x] R1 `src/main.cpp` – `HighScoreManager` is destroyed before the QML engine that references it
+- [x] R2 `src/HighScoreManager.cpp` – non-atomic save; a failed write wipes the scoreboard silently
+- [~] R3 `qml/ScoreDialog.qml` – score list is evaluated once and goes stale (C++ signal done, QML binding open)
 - [ ] R4 `qml/Tile.qml` – every landed tile replays the spawn drop and blinks (opacity 0 → 1)
 - [ ] R5 `qml/Tile.qml` – animations overwrite the `y` and `scale` bindings (resize/press break)
 - [ ] R6 `qml/main.qml` – board sizing ignores height; overflows on short or portrait screens
 - [ ] R7 `qml/main.qml` – one-click, unconfirmed "Reset Highscores" (also in ISSUES.md: remove it)
 - [ ] R8 `qml/ScoreDialog.qml` – whitespace names accepted, no max length, no Enter-to-submit
-- [ ] R9 `src/main.cpp` – no organization/application name; storage path depends on binary name
+- [x] R9 `src/main.cpp` – no organization/application name; storage path depends on binary name
 - [ ] R10 `src/GameLogicBridge.*` – unused in the app and duplicates controller conversion helpers
 - [ ] Findings from the `/code-review` pass (merged here when it reports)
 
