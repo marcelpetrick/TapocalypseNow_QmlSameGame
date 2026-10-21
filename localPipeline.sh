@@ -626,7 +626,7 @@ build_coverage_project() {
     fi
 
     log "Building coverage configuration with ${PARALLEL_JOBS} parallel job(s)."
-    run_command "Running coverage build" cmake --build "${COVERAGE_BUILD_DIR}" --parallel "${PARALLEL_JOBS}" "${clean_first[@]}" || return 1
+    run_command "Running coverage build" cmake --build "${COVERAGE_BUILD_DIR}" --parallel "${PARALLEL_JOBS}" ${clean_first[@]+"${clean_first[@]}"} || return 1
     printf '%s\n' "${compiler_id}" > "${compiler_stamp}"
 }
 
