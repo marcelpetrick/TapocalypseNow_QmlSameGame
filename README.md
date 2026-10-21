@@ -9,7 +9,7 @@ Small groups are safe. Big groups are glorious. Greed is rewarded — until the 
 [![Tapocalypse gameplay](media/typocalypse.gif)](media/typocalypse.mp4)
 
 [**Download for Linux, Windows or macOS**](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame/releases/latest) ·
-[Rules](RULES.md) · [Build from source](#build-from-source)
+[Rules](RULES.md) · Build from source: see below
 
 ---
 
