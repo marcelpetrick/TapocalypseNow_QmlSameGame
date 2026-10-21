@@ -380,6 +380,15 @@ void GameBoardController::removeGroup(int row, int col) {
 
 void GameBoardController::registerUserAction() { restartHintIdleTimer(); }
 
+void GameBoardController::endRun() {
+    if (m_busy || m_gameOver) return;
+
+    stopHintCycle();
+    clearSelections();
+    setGameOver(true);
+    emit gameEnded(m_score);
+}
+
 void GameBoardController::benchmarkStep() {
     if (m_busy) return;
     if (m_gameOver) {

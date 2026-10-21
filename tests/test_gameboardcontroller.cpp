@@ -37,6 +37,8 @@ class GameBoardControllerTest : public QObject {
     void idleHint_restartsAfterUserAction();
     void hintCallbacks_handleBusyAndNoMoveBoards();
     void internalCallbacks_coverDefensiveBranches();
+    void endRun_endsPlayableRunOnceAndIgnoresBusyOrFinishedBoards();
+    void benchmarkStep_playsFirstGroupAndRestartsFinishedGames();
 };
 
 void GameBoardControllerTest::setters_emitOnlyOnValueChanges() {
@@ -408,6 +410,67 @@ void GameBoardControllerTest::internalCallbacks_coverDefensiveBranches() {
     controller.onRemovePreviewTimer();
     controller.onRemoveHoldTimer();
     QVERIFY(!controller.busy());
+}
+
+void GameBoardControllerTest::endRun_endsPlayableRunOnceAndIgnoresBusyOrFinishedBoards() {
+    GameBoardController controller;
+    controller.setAnimationTimingsForTesting(50, 50, 50, 50, 1);
+    controller.setHintTimingsForTesting(1000, 1000);
+    controller.setGridForTesting(makeGrid({
+        {1, 1, 1, 2},
+        {3, 4, 4, 4},
+    }));
+    QSignalSpy endedSpy(&controller, &GameBoardController::gameEnded);
+
+    controller.removeGroup(0, 0);
+    QVERIFY(controller.busy());
+    controller.endRun();
+    QCOMPARE(endedSpy.count(), 0);
+    QVERIFY(!controller.gameOver());
+
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), 1000);
+    QCOMPARE(controller.score(), 9);
+    QVERIFY(!controller.gameOver());
+
+    controller.endRun();
+    QVERIFY(controller.gameOver());
+    QCOMPARE(endedSpy.count(), 1);
+    QCOMPARE(endedSpy.takeFirst().at(0).toInt(), 9);
+
+    controller.endRun();
+    QCOMPARE(endedSpy.count(), 0);
+    const GameGrid frozen = controller.gridState();
+    controller.removeGroup(1, 1);
+    QCOMPARE(controller.gridState(), frozen);
+}
+
+void GameBoardControllerTest::benchmarkStep_playsFirstGroupAndRestartsFinishedGames() {
+    GameBoardController controller;
+    controller.setAnimationTimingsForTesting(1, 1, 1, 1, 1);
+    controller.setHintTimingsForTesting(1000, 1000);
+    controller.setRows(4);
+    controller.setCols(4);
+    controller.setGridForTesting(makeGrid({
+        {1, 2, 3},
+        {4, 4, 4},
+    }));
+
+    controller.benchmarkStep();
+    QVERIFY(controller.busy());
+    controller.benchmarkStep();
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), 1000);
+    QCOMPARE(controller.moves(), 1);
+    QVERIFY(controller.gameOver());
+
+    controller.benchmarkStep();
+    QVERIFY(!controller.gameOver());
+    QCOMPARE(controller.moves(), 0);
+    QCOMPARE(controller.gridState().size(), 4);
+
+    controller.m_gameOver = false;
+    controller.m_gridState = makeGrid({{1, 2}});
+    controller.benchmarkStep();
+    QCOMPARE(controller.gridState().size(), 4);
 }
 
 QTEST_GUILESS_MAIN(GameBoardControllerTest)

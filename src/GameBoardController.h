@@ -121,6 +121,13 @@ class GameBoardController : public QObject {
      */
     Q_INVOKABLE void registerUserAction();
     /**
+     * @brief End the current run early and hand its score to the highscore flow.
+     *
+     * Ignored while a move is still resolving or after the game is already over. Otherwise the board enters game-over
+     * state and @ref gameEnded is emitted with the current score, exactly as if no move were left.
+     */
+    Q_INVOKABLE void endRun();
+    /**
      * @brief Execute one deterministic automated benchmark action.
      *
      * Selects the first valid group in scan order. A finished game is reset,
