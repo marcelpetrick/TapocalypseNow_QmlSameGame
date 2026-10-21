@@ -121,7 +121,8 @@ Save end-to-end screenshots with `TAPOCALYPSE_E2E_SCREENSHOT_DIR=/some/dir ./bui
 
 - **CI** (`.github/workflows/ci.yml`): Linux, Windows and macOS with Qt 6.12, plus Linux with Qt 6.5.
 - **Release** (`.github/workflows/release.yml`): push a tag `vX.Y.Z` → tested, smoke-started, self-contained archives
-  for all three platforms on a GitHub release. Bump `project(... VERSION ...)` in `CMakeLists.txt` first.
+  for all three platforms on a GitHub release. The app and bundles report the tag's version; keep
+  `project(... VERSION ...)` in `CMakeLists.txt` in step for local builds.
 
 ### Runtime switches
 

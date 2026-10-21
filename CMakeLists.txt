@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 project(Tapocalypse VERSION 1.0.0 LANGUAGES CXX)
 
+# Version shown by the app and stamped into bundles. Releases pass the tag's version (which may carry a suffix).
+set(TAPOCALYPSE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version string reported by the app")
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -84,7 +87,7 @@ qt_add_executable(Tapocalypse
     src/main.cpp
 )
 
-target_compile_definitions(Tapocalypse PRIVATE TAPOCALYPSE_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(Tapocalypse PRIVATE TAPOCALYPSE_VERSION="${TAPOCALYPSE_VERSION}")
 
 # Link the Qt libs needed by QGuiApplication, QML, and Quick
 target_link_libraries(Tapocalypse
@@ -106,8 +109,8 @@ set_target_properties(Tapocalypse PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_BUNDLE_NAME Tapocalypse
     MACOSX_BUNDLE_GUI_IDENTIFIER it.marcelpetrick.tapocalypse
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+    MACOSX_BUNDLE_BUNDLE_VERSION ${TAPOCALYPSE_VERSION}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${TAPOCALYPSE_VERSION}
 )
 
 include(GNUInstallDirs)

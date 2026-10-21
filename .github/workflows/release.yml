@@ -55,7 +55,7 @@ jobs:
           echo "name=tapocalypse-${version}-${{ matrix.platform }}" >> "${GITHUB_OUTPUT}"
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTAPOCALYPSE_DEPLOY_QT=ON ${{ runner.os == 'Linux' && '-G Ninja' || '' }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTAPOCALYPSE_DEPLOY_QT=ON -DTAPOCALYPSE_VERSION=${{ steps.version.outputs.version }} ${{ runner.os == 'Linux' && '-G Ninja' || '' }}
 
       - name: Build
         run: cmake --build build --config Release --parallel
