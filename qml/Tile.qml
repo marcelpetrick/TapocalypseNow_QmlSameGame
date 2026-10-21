@@ -27,6 +27,9 @@ Item {
     property real spawnOffsetY: 0
     property real effectScale: 1
     property real effectOpacity: 1
+    // Press feedback is smoothed on its own channel; a Behavior on the combined scale would also
+    // smear the pop and intro animations that drive effectScale.
+    property real pressScale: pressedArea.pressed ? 0.94 : 1
 
     signal clicked()
     signal hovered(bool inside)
@@ -76,7 +79,7 @@ Item {
         border.width: tile.hoverActive ? 3 : 2
         border.color: tile.hoverActive ? Qt.lighter(tile.selectedColor, 1.6) : "#1f2a6b"
         opacity: 0.98 * tile.effectOpacity
-        scale: (pressedArea.pressed ? 0.94 : 1) * tile.effectScale
+        scale: tile.pressScale * tile.effectScale
 
         // quick flash overlay for pop
         Rectangle {
@@ -97,15 +100,6 @@ Item {
             GradientStop {
                 position: 1
                 color: "#111525"
-            }
-
-        }
-
-        // subtle hover/press
-        Behavior on scale {
-            NumberAnimation {
-                duration: 90
-                easing.type: Easing.OutQuad
             }
 
         }
@@ -381,6 +375,14 @@ Item {
             property: "jitterX"
             to: 0
             duration: 50
+            easing.type: Easing.OutQuad
+        }
+
+    }
+
+    Behavior on pressScale {
+        NumberAnimation {
+            duration: 90
             easing.type: Easing.OutQuad
         }
 
