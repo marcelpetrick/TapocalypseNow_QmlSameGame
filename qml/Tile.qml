@@ -34,7 +34,7 @@ Item {
     onColorIndexChanged: {
         if (_prevIndex === -1 && colorIndex >= 0) {
             _spawnFromY = y - height * 0.25;
-            _spawnToY   = y;
+            _spawnToY = y;
             spawnAnim.restart();
         }
         _prevIndex = colorIndex;

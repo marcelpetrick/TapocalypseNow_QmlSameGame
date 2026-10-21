@@ -44,16 +44,14 @@ int main(int argc, char* argv[]) {
     // unchanged unless explicitly requested by the environment.
     if (qEnvironmentVariable("TAPOCALYPSE_PROFILE") == QStringLiteral("1")) {
         bool durationValid = false;
-        const double autoExitSeconds =
-            qEnvironmentVariable("TAPOCALYPSE_PROFILE_SECONDS").toDouble(&durationValid);
+        const double autoExitSeconds = qEnvironmentVariable("TAPOCALYPSE_PROFILE_SECONDS").toDouble(&durationValid);
 
         const auto roots = engine.rootObjects();
         if (!roots.isEmpty()) {
             if (auto* window = qobject_cast<QQuickWindow*>(roots.constFirst())) {
                 new FrameProfiler(window, durationValid ? autoExitSeconds : 0.0);
             } else {
-                qWarning().noquote()
-                    << "TAPOCALYPSE_FRAME error=root_is_not_qquickwindow";
+                qWarning().noquote() << "TAPOCALYPSE_FRAME error=root_is_not_qquickwindow";
             }
         }
     }

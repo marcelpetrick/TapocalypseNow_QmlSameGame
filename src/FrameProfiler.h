@@ -14,10 +14,10 @@ class QQuickWindow;
  * (sorting and formatting) is deferred to the periodic reporting timer.
  */
 class FrameProfiler final : public QObject {
-public:
+   public:
     explicit FrameProfiler(QQuickWindow* window, double autoExitSeconds = 0.0);
 
-private:
+   private:
     void recordFrame();
     void report();
 
