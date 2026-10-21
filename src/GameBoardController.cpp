@@ -54,6 +54,7 @@ void GameBoardController::setMinimumGroupSize(int minimumGroupSize) {
     if (m_minimumGroupSize == minimumGroupSize) return;
     m_minimumGroupSize = minimumGroupSize;
     emit minimumGroupSizeChanged();
+    updateHoverSet();
 }
 
 int GameBoardController::score() const { return m_score; }
@@ -113,6 +114,7 @@ void GameBoardController::setGridState(const GameGrid& grid) {
     m_gridState = grid;
     m_grid = toVariantGrid(m_gridState);
     emit gridChanged();
+    updateHoverSet();
 }
 
 void GameBoardController::setPopSet(const QVariantMap& popSet) {
@@ -333,7 +335,6 @@ void GameBoardController::reset() {
     setGameOver(false);
     setGridState(buildPlayableGrid());
     setGameOver(m_gridState.isEmpty() || !GameRules::hasMoves(m_gridState, m_minimumGroupSize));
-    updateHoverSet();
     restartHintIdleTimer();
 }
 
@@ -404,7 +405,6 @@ void GameBoardController::setGridForTesting(const GameGrid& grid) {
     setGameOver(false);
     setGridState(grid);
     setGameOver(m_gridState.isEmpty() || !GameRules::hasMoves(m_gridState, m_minimumGroupSize));
-    updateHoverSet();
     restartHintIdleTimer();
 }
 

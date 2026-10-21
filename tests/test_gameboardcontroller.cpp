@@ -507,6 +507,12 @@ void GameBoardControllerTest::hover_previewsRemovableGroupsOnly() {
     controller.setHoverCell(1, 1);
     QCOMPARE(controller.hoverSet().size(), 3);
 
+    // Raising the threshold re-evaluates the preview without any grid change.
+    controller.setMinimumGroupSize(4);
+    QVERIFY(controller.hoverSet().isEmpty());
+    controller.setMinimumGroupSize(3);
+    QCOMPARE(controller.hoverSet().size(), 3);
+
     controller.endRun();
     QVERIFY(controller.hoverSet().isEmpty());
 }
