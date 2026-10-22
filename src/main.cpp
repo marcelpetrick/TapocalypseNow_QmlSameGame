@@ -4,6 +4,7 @@
  */
 
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQmlExtensionPlugin>
@@ -35,6 +36,9 @@ int main(int argc, char* argv[]) {
     QCoreApplication::setApplicationName(QStringLiteral("tapocalypse"));
     QGuiApplication::setApplicationDisplayName(QStringLiteral("Tapocalypse"));
     QCoreApplication::setApplicationVersion(QStringLiteral(TAPOCALYPSE_VERSION));
+    // Wayland compositors match windows to launchers by desktop file name; X11, Windows and macOS use the icon.
+    QGuiApplication::setDesktopFileName(QStringLiteral("tapocalypse"));
+    QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/packaging/tapocalypse.svg")));
 
     // Declared before the engine so it outlives every QML binding that reads it.
     HighScoreManager hsManager;

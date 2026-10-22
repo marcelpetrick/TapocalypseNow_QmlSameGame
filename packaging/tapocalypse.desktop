@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Tapocalypse
+GenericName=Tile Puzzle
+Comment=Neon SameGame: pop groups of three or more for N² points
+Exec=tapocalypse
+Icon=tapocalypse
+Terminal=false
+Categories=Game;LogicGame;
+Keywords=samegame;puzzle;tiles;arcade;

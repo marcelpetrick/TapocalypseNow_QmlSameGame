@@ -124,6 +124,12 @@ qt_add_executable(Tapocalypse
 
 target_compile_definitions(Tapocalypse PRIVATE TAPOCALYPSE_VERSION="${TAPOCALYPSE_VERSION}")
 
+# Window icon; the same SVG is the AppImage and desktop-entry icon (packaging/).
+qt_add_resources(Tapocalypse tapocalypse_icon
+    PREFIX /
+    FILES packaging/tapocalypse.svg
+)
+
 # Link the Qt libs needed by QGuiApplication, QML, and Quick
 target_link_libraries(Tapocalypse
     PRIVATE
