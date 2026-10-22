@@ -20,7 +20,10 @@ constexpr float kVolume = 0.7F;
 
 SoundEffects::SoundEffects(const QString& settingsPath, QObject* parent) : QObject(parent), m_settingsPath(settingsPath) {
     const QSettings settings(settingsFile(), QSettings::IniFormat);
-    m_muted = settings.value(QLatin1String(kMutedKey), false).toBool() || QCoreApplication::arguments().contains(QStringLiteral("--mute"));
+    // --benchmark plays dozens of moves per second; a burst of pops would only get in the way of profiling.
+    const QStringList arguments = QCoreApplication::arguments();
+    const bool sessionMuted = arguments.contains(QStringLiteral("--mute")) || arguments.contains(QStringLiteral("--benchmark"));
+    m_muted = settings.value(QLatin1String(kMutedKey), false).toBool() || sessionMuted;
 
 #ifdef TAPOCALYPSE_HAS_SOUND
     // Load every cue up front: QSoundEffect decodes asynchronously, and a cue that is still loading stays silent.

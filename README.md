@@ -158,7 +158,7 @@ Save end-to-end screenshots with `TAPOCALYPSE_E2E_SCREENSHOT_DIR=/some/dir ./bui
 | Switch | Effect |
 |---|---|
 | `--windowed` | resizable window instead of full screen |
-| `--benchmark` | plays automatically, as fast as the animations allow |
+| `--benchmark` | plays automatically, as fast as the animations allow (silent) |
 | `--mute` | no sound for this session (the stored sound setting is left alone) |
 | `QT_QPA_PLATFORM=xcb` / `wayland` | force X11 or Wayland on Linux; by default Qt follows the session |
 | `TAPOCALYPSE_PROFILE=1` | prints one `TAPOCALYPSE_FRAME` line per second (fps, percentiles, budget overruns) |

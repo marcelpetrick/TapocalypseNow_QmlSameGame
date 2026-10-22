@@ -32,7 +32,8 @@ class SoundEffects : public QObject {
      * @param settingsPath INI file that stores the mute switch; empty uses the application's config directory.
      * @param parent Owning QObject parent.
      *
-     * The stored mute switch is restored; @c --mute on the command line mutes this session without storing it.
+     * The stored mute switch is restored; @c --mute or @c --benchmark on the command line mutes this session
+     * without storing it.
      */
     explicit SoundEffects(const QString& settingsPath = QString(), QObject* parent = nullptr);
     ~SoundEffects() override;
