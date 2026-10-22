@@ -130,10 +130,17 @@ endif()
 option(TAPOCALYPSE_DEPLOY_QT "Bundle the Qt runtime on 'cmake --install'" ${_tapocalypse_deploy_default})
 
 if(TAPOCALYPSE_DEPLOY_QT)
+    # Qt deploys only its default platform plugin (xcb on Linux), so a bundle would abort on Wayland-only sessions.
+    # Ship the Wayland platform plugin too: one plugin since Qt 6.10, a generic/EGL pair before.
+    set(_tapocalypse_extra_plugins "")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(_tapocalypse_extra_plugins INCLUDE_PLUGINS qwayland qwayland-generic qwayland-egl)
+    endif()
     qt_generate_deploy_qml_app_script(
         TARGET Tapocalypse
         OUTPUT_SCRIPT tapocalypse_deploy_script
         NO_UNSUPPORTED_PLATFORM_ERROR
+        ${_tapocalypse_extra_plugins}
     )
     install(SCRIPT ${tapocalypse_deploy_script})
 endif()
