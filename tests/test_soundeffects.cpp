@@ -1,9 +1,13 @@
+#include <QFile>
 #include <QSettings>
+#include <QtEndian>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
 
 #ifdef TAPOCALYPSE_HAS_SOUND
+#include <QAudioDevice>
+#include <QMediaDevices>
 #include <QSoundEffect>
 #endif
 
@@ -20,7 +24,8 @@ class SoundEffectsTest : public QObject {
     void play_emitsCueUnlessMuted();
     void muted_persistsAcrossInstances();
     void muted_restoresStoredValue();
-    void cues_decodeFromResources();
+    void cues_areCompiledInAsPcmWav();
+    void cues_loadOnTheAudioDevice();
 
    private:
     QString settingsPath() const { return m_dir.filePath(QStringLiteral("settings.ini")); }
@@ -107,14 +112,36 @@ void SoundEffectsTest::muted_restoresStoredValue() {
     QVERIFY(SoundEffects(settingsPath()).muted());
 }
 
-void SoundEffectsTest::cues_decodeFromResources() {
+void SoundEffectsTest::cues_areCompiledInAsPcmWav() {
 #ifndef TAPOCALYPSE_HAS_SOUND
     QVERIFY(!SoundEffects(settingsPath()).available());
     QSKIP("built without Qt Multimedia");
 #else
+    // Every generated cue must be in the binary as 16-bit PCM mono WAV, independent of the audio hardware.
+    for (int index = 0; index < SoundEffects::kCueCount; ++index) {
+        const QString name = SoundEffects::cueName(static_cast<SoundEffects::Cue>(index));
+        QFile file(QStringLiteral(":/sounds/%1.wav").arg(name));
+        QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(name));
+        const QByteArray header = file.read(44);
+        QCOMPARE(header.size(), 44);
+        QCOMPARE(header.mid(0, 4), QByteArray("RIFF"));
+        QCOMPARE(header.mid(8, 8), QByteArray("WAVEfmt "));
+        QCOMPARE(qFromLittleEndian<quint16>(header.constData() + 20), quint16(1));   // PCM
+        QCOMPARE(qFromLittleEndian<quint16>(header.constData() + 22), quint16(1));   // mono
+        QCOMPARE(qFromLittleEndian<quint16>(header.constData() + 34), quint16(16));  // bits per sample
+        QVERIFY2(file.size() > 1000, qPrintable(name));
+    }
+#endif
+}
+
+void SoundEffectsTest::cues_loadOnTheAudioDevice() {
+#ifndef TAPOCALYPSE_HAS_SOUND
+    QSKIP("built without Qt Multimedia");
+#else
+    // CI runners have no sound card; there QSoundEffect reports an error by design, so only check real devices.
+    if (QMediaDevices::defaultAudioOutput().isNull()) QSKIP("no audio output device");
     SoundEffects sounds(settingsPath());
     QVERIFY(sounds.available());
-    // Every generated WAV must be compiled in and decodable, or that cue would be silently missing.
     for (auto* effect : sounds.m_effects) {
         QVERIFY(effect);
         QTRY_VERIFY2(effect->status() != QSoundEffect::Loading && effect->status() != QSoundEffect::Null, qPrintable(effect->source().toString()));
