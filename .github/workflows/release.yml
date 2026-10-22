@@ -12,6 +12,11 @@ permissions:
 
 env:
   QT_VERSION: 6.12.0
+  # AppImage tooling, pinned by release and checksum (sha256 from the GitHub release asset digests).
+  APPIMAGETOOL_URL: https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+  APPIMAGETOOL_SHA256: ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
+  APPIMAGE_RUNTIME_URL: https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
+  APPIMAGE_RUNTIME_SHA256: 2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
 
 jobs:
   package:
@@ -79,23 +84,30 @@ jobs:
           codesign --force --deep --sign - "${app}"
           codesign --verify --deep --strict --verbose=2 "${app}"
 
+      - name: Build the AppImage
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          tools="${RUNNER_TEMP}/appimage-tools"; mkdir -p "${tools}"
+          curl -fsSLo "${tools}/appimagetool" "${APPIMAGETOOL_URL}"
+          curl -fsSLo "${tools}/runtime-x86_64" "${APPIMAGE_RUNTIME_URL}"
+          printf '%s  %s\n' "${APPIMAGETOOL_SHA256}" "${tools}/appimagetool" "${APPIMAGE_RUNTIME_SHA256}" "${tools}/runtime-x86_64" | sha256sum -c -
+          chmod +x "${tools}/appimagetool"
+          tools/make_appimage.sh "stage/${{ steps.version.outputs.name }}" "stage/${{ steps.version.outputs.name }}.AppImage" \
+            "${tools}/appimagetool" "${tools}/runtime-x86_64"
+
       - name: Smoke-test the packaged app
         shell: bash
         run: |
           root="stage/${{ steps.version.outputs.name }}"
-          case "${RUNNER_OS}" in
-            Linux) app="${root}/bin/tapocalypse" ;;
-            Windows) app="${root}/bin/tapocalypse.exe" ;;
-            macOS) app="${root}/tapocalypse.app/Contents/MacOS/tapocalypse" ;;
-          esac
           # Run the archive as a user would get it: hide the CI Qt installation (plugin/QML paths and PATH entries)
           # so only bundled libraries, plugins and QML modules can satisfy the app, on the platform's real backend.
           unset QT_PLUGIN_PATH QML2_IMPORT_PATH QML_IMPORT_PATH QT_QPA_PLATFORM_PLUGIN_PATH QT_QPA_PLATFORM
           PATH="$(printf '%s' "${PATH}" | tr ':' '\n' | grep -v '/Qt/' | paste -sd: -)"
 
-          # smoke <label> <launcher...>: start the app, require it to keep running and to report no missing parts.
+          # smoke <label> <app> <launcher...>: start the app, require it to keep running and to report no missing parts.
           smoke() {
-            local label="$1"; shift
+            local label="$1" app="$2"; shift 2
             local log="${RUNNER_TEMP}/smoke-${label}.log"
             "$@" "${app}" --windowed > "${log}" 2>&1 &
             local pid=$!
@@ -112,16 +124,23 @@ jobs:
             echo "[${label}] packaged app is self-contained and running"
           }
 
-          if [[ "${RUNNER_OS}" == "Linux" ]]; then
-            smoke x11 env QT_QPA_PLATFORM=xcb xvfb-run -a
-            # Wayland-only session: no X server to fall back to, headless Weston as the compositor.
-            export XDG_RUNTIME_DIR="${RUNNER_TEMP}/xdg"; mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
-            weston --backend=headless-backend.so --socket=tapocalypse-wl --idle-time=0 > "${RUNNER_TEMP}/weston.log" 2>&1 &
-            for _ in $(seq 50); do [[ -S "${XDG_RUNTIME_DIR}/tapocalypse-wl" ]] && break; sleep 0.2; done
-            smoke wayland env -u DISPLAY QT_QPA_PLATFORM=wayland WAYLAND_DISPLAY=tapocalypse-wl
-          else
-            smoke native env
-          fi
+          case "${RUNNER_OS}" in
+            Linux)
+              tarball_app="${root}/bin/tapocalypse"
+              appimage="${root}.AppImage"
+              smoke x11 "${tarball_app}" env QT_QPA_PLATFORM=xcb xvfb-run -a
+              # The runner has no FUSE; extract-and-run is the AppImage's own fallback for such systems.
+              smoke appimage-x11 "${appimage}" env APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=xcb xvfb-run -a
+              # Wayland-only session: no X server to fall back to, headless Weston as the compositor.
+              export XDG_RUNTIME_DIR="${RUNNER_TEMP}/xdg"; mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
+              weston --backend=headless-backend.so --socket=tapocalypse-wl --idle-time=0 > "${RUNNER_TEMP}/weston.log" 2>&1 &
+              for _ in $(seq 50); do [[ -S "${XDG_RUNTIME_DIR}/tapocalypse-wl" ]] && break; sleep 0.2; done
+              smoke wayland "${tarball_app}" env -u DISPLAY QT_QPA_PLATFORM=wayland WAYLAND_DISPLAY=tapocalypse-wl
+              smoke appimage-wayland "${appimage}" env -u DISPLAY APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=wayland WAYLAND_DISPLAY=tapocalypse-wl
+              ;;
+            Windows) smoke native "${root}/bin/tapocalypse.exe" env ;;
+            macOS) smoke native "${root}/tapocalypse.app/Contents/MacOS/tapocalypse" env ;;
+          esac
 
       - name: Archive
         shell: bash
