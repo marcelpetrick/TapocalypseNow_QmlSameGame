@@ -18,6 +18,7 @@
 #include "GameBoardController.h"
 #include "GameRules.h"
 #include "HighScoreManager.h"
+#include "SoundEffects.h"
 
 Q_IMPORT_QML_PLUGIN(TapocalypsePlugin)
 
@@ -53,6 +54,8 @@ class EndToEndTest : public QObject {
     void illegalClick_changesNothing();
     void playingToGameOver_offersHighscoreEntryOnce();
     void endRun_submitsPartialRun();
+    void sounds_followTheGame();
+    void soundButton_mutesAndRemembers();
     void layout_fitsEveryScreenShape_data();
     void layout_fitsEveryScreenShape();
 
@@ -65,9 +68,12 @@ class EndToEndTest : public QObject {
     void click(QQuickItem* target) const;
     void clickTile(int row, int col) const;
     void waitUntilIdle() const;
+    QStringList takeCues();
 
     std::unique_ptr<QTemporaryDir> m_dir;
     std::unique_ptr<HighScoreManager> m_scores;
+    std::unique_ptr<SoundEffects> m_sounds;
+    std::unique_ptr<QSignalSpy> m_cues;
     std::unique_ptr<QQmlApplicationEngine> m_engine;
 };
 
@@ -75,8 +81,13 @@ void EndToEndTest::init() {
     m_dir = std::make_unique<QTemporaryDir>();
     QVERIFY(m_dir->isValid());
     m_scores = std::make_unique<HighScoreManager>(m_dir->filePath(QStringLiteral("highscores.json")));
+    // Real cue player, inaudible: the tests listen to cuePlayed instead of the speakers.
+    m_sounds = std::make_unique<SoundEffects>(m_dir->filePath(QStringLiteral("settings.ini")));
+    m_sounds->setVolume(0);
+    m_cues = std::make_unique<QSignalSpy>(m_sounds.get(), &SoundEffects::cuePlayed);
     m_engine = std::make_unique<QQmlApplicationEngine>();
     m_engine->rootContext()->setContextProperty(QStringLiteral("highScoreManager"), m_scores.get());
+    m_engine->rootContext()->setContextProperty(QStringLiteral("soundEffects"), m_sounds.get());
     m_engine->load(QUrl(QStringLiteral("qrc:/Tapocalypse/qml/main.qml")));
     QVERIFY(window());
     window()->resize(1280, 800);
@@ -90,6 +101,8 @@ void EndToEndTest::init() {
 
 void EndToEndTest::cleanup() {
     m_engine.reset();
+    m_cues.reset();
+    m_sounds.reset();
     m_scores.reset();
     m_dir.reset();
 }
@@ -122,6 +135,13 @@ void EndToEndTest::click(QQuickItem* target) const {
 void EndToEndTest::clickTile(int row, int col) const { QTest::mouseClick(window(), Qt::LeftButton, Qt::NoModifier, tileCenter(row, col)); }
 
 void EndToEndTest::waitUntilIdle() const { QTRY_VERIFY_WITH_TIMEOUT(!controller()->busy(), 2000); }
+
+QStringList EndToEndTest::takeCues() {
+    QStringList names;
+    for (const auto& call : *m_cues) names << call.constFirst().toString();
+    m_cues->clear();
+    return names;
+}
 
 void EndToEndTest::legalClick_removesWholeGroupAndScoresSquare() {
     // RULES.md §5–§8: the whole orthogonal group goes, score += N*N, tiles fall, empty columns shift left.
@@ -233,6 +253,57 @@ void EndToEndTest::endRun_submitsPartialRun() {
     QVERIFY(controller()->gameOver());
     QTRY_VERIFY(scoreDialog()->property("opened").toBool());
     QCOMPARE(scoreDialog()->property("candidateScore").toInt(), 9);
+}
+
+void EndToEndTest::sounds_followTheGame() {
+    // The initial deal plays the arpeggio.
+    QCOMPARE(takeCues(), QStringList({"deal"}));
+
+    controller()->setGridForTesting(makeGrid({
+        {0, 0, 1, 2},
+        {0, 0, 1, 2},
+        {0, 0, 3, 3},
+    }));
+    // Too small: the "nuh-uh".
+    clickTile(2, 2);
+    waitUntilIdle();
+    QCOMPARE(takeCues(), QStringList({"reject"}));
+
+    // Six tiles pop with the second tier, then the column slide settles with a thud and the stuck board ends the run.
+    clickTile(0, 0);
+    waitUntilIdle();
+    QCOMPARE(takeCues(), QStringList({"pop2", "land", "gameover"}));
+
+    // A saved highscore gets the fanfare.
+    QTRY_VERIFY(scoreDialog()->property("opened").toBool());
+    for (const char key : QByteArrayLiteral("Bo")) QTest::keyClick(window(), key);
+    QTest::keyClick(window(), Qt::Key_Return);
+    QCOMPARE(takeCues(), QStringList({"highscore"}));
+
+    QMetaObject::invokeMethod(scoreDialog(), "close");
+    click(item("newGameButton"));
+    QCOMPARE(takeCues(), QStringList({"deal"}));
+}
+
+void EndToEndTest::soundButton_mutesAndRemembers() {
+    auto* button = item("soundButton");
+    QVERIFY(button);
+    QCOMPARE(button->isVisible(), m_sounds->available());
+    if (!m_sounds->available()) QSKIP("built without Qt Multimedia: the sound button stays hidden");
+
+    QCOMPARE(button->property("text").toString(), QStringLiteral("Sound: On"));
+    click(button);
+    QVERIFY(m_sounds->muted());
+    QCOMPARE(button->property("text").toString(), QStringLiteral("Sound: Off"));
+    takeCues();
+    click(item("newGameButton"));
+    QCOMPARE(takeCues(), QStringList());
+    QVERIFY(SoundEffects(m_dir->filePath(QStringLiteral("settings.ini"))).muted());
+
+    // M toggles it back from the keyboard.
+    QTest::keyClick(window(), Qt::Key_M);
+    QVERIFY(!m_sounds->muted());
+    QCOMPARE(button->property("text").toString(), QStringLiteral("Sound: On"));
 }
 
 void EndToEndTest::layout_fitsEveryScreenShape_data() {

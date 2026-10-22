@@ -8,6 +8,8 @@ Popup {
     property int candidateScore: 0
     property bool browsing: true
     property var highScoreService: null
+    // Cue player (SoundEffects); null keeps the dialog silent.
+    property QtObject sounds: null
     // Base size for text, set by the window so the dialog scales with the screen.
     property real unit: 18
     // True while a finished run can still be saved; guarantees one submission per run.
@@ -39,6 +41,9 @@ Popup {
         browsing = true;
         nameField.text = "";
         statusLabel.text = saved ? "Saved. Can you beat it?" : "Could not write the highscore file.";
+        if (saved && sounds)
+            sounds.playHighscore();
+
     }
 
     modal: true

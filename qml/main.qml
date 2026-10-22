@@ -29,6 +29,13 @@ ApplicationWindow {
         onTapped: game.registerUserAction()
     }
 
+    // M toggles sound from anywhere except the name field, where it is just a letter.
+    Shortcut {
+        sequence: "M"
+        enabled: soundEffects.available && !scoreDialog.opened
+        onActivated: soundEffects.muted = !soundEffects.muted
+    }
+
     // Futuristic neon header
     Rectangle {
         id: header
@@ -131,6 +138,18 @@ ApplicationWindow {
             }
 
             NeonButton {
+                objectName: "soundButton"
+                accent: "#00ffae"
+                visible: soundEffects.available
+                text: soundEffects.muted ? "Sound: Off" : "Sound: On"
+                font.pixelSize: root.unit
+                onClicked: {
+                    game.registerUserAction();
+                    soundEffects.muted = !soundEffects.muted;
+                }
+            }
+
+            NeonButton {
                 objectName: "highscoresButton"
                 accent: "#d0a2ff"
                 text: "Highscores"
@@ -176,6 +195,7 @@ ApplicationWindow {
             anchors.margins: root.unit
             rows: root.gridRows
             cols: root.gridCols
+            sounds: soundEffects
             onGameEnded: function(finalScore) {
                 scoreDialog.consider(finalScore);
             }
@@ -190,6 +210,7 @@ ApplicationWindow {
         anchors.centerIn: parent
         unit: root.unit
         highScoreService: highScoreManager
+        sounds: soundEffects
     }
 
 }

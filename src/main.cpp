@@ -11,6 +11,7 @@
 
 #include "FrameProfiler.h"
 #include "HighScoreManager.h"
+#include "SoundEffects.h"
 
 /**
  * @brief Start the Tapocalypse Qt application.
@@ -37,9 +38,11 @@ int main(int argc, char* argv[]) {
 
     // Declared before the engine so it outlives every QML binding that reads it.
     HighScoreManager hsManager;
+    SoundEffects soundEffects;
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("highScoreManager", &hsManager);
+    engine.rootContext()->setContextProperty("soundEffects", &soundEffects);
 
     const QUrl url(QStringLiteral("qrc:/Tapocalypse/qml/main.qml"));
     QObject::connect(

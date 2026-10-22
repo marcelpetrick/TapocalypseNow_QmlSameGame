@@ -29,12 +29,17 @@ Item {
     readonly property var tilePalette: ["#00E5FF", "#FF00E5", "#00FFAE", "#FFD400", "#8B80FF", "#FF5E5B"]
     // Incremented whenever a fresh board is dealt so tiles can play their intro.
     property int dealEpoch: 0
+    // Cue player (SoundEffects); null keeps the board silent.
+    property QtObject sounds: null
 
     signal gameEnded(int score)
 
     function reset() {
         controller.reset();
         dealEpoch++;
+        if (sounds)
+            sounds.playDeal();
+
     }
 
     function endRun() {
@@ -55,7 +60,25 @@ Item {
         cols: board.cols
         minimumGroupSize: board.minimumGroupSize
         onGameEnded: function(finalScore) {
+            if (board.sounds)
+                board.sounds.playGameOver();
+
             board.gameEnded(finalScore);
+        }
+        onGroupSelected: function(size) {
+            if (board.sounds)
+                board.sounds.playPop(size);
+
+        }
+        onMoveRejected: {
+            if (board.sounds)
+                board.sounds.playReject();
+
+        }
+        onTilesLanded: {
+            if (board.sounds)
+                board.sounds.playLand();
+
         }
     }
 
