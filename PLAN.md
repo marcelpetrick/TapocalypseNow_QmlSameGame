@@ -86,3 +86,18 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 - [x] Found after release: CI smoke test leaned on the CI Qt install, and native Controls styles ignored the
       theme on macOS/Windows → realistic smoke test, Basic style pinned, `v1.0.1` published (v1.0.0 marked
       superseded)
+
+## 8. Second pass (v1.1.0) — ranked by severity × impact
+
+- [ ] P1 (S1) Linux release aborts on Wayland-only sessions ("Available platform plugins are: xcb"): bundle the
+      Wayland platform plugin and smoke-test the archive under both X11 (Xvfb) and Wayland (headless Weston)
+- [ ] P2 (S1) macOS bundle: re-seal it with an ad-hoc signature after deployment rewrites the frameworks, and
+      verify it in CI, so Apple silicon does not report the unsigned download as damaged
+- [x] P3 (S2) AGENTS.md still recommends `#define private public`, which breaks MSVC linking → friend classes
+- [ ] P4 (S3) Sound effects: synthesized in-repo (no licences, no downloads), optional Qt Multimedia, mute toggle
+      that persists, off switch for embedded builds
+- [ ] P5 (S3) Fresh screenshots and gameplay GIF generated from the real QML
+- [ ] P6 (S3) Refresh every Markdown document and the release notes
+- [ ] P7 Re-check aqtinstall: still 3.3.0 on PyPI → keep the upstream pin
+- [ ] P8 Release v1.1.0, verify the downloaded archives, then `/githubAbout` (add and remove topics)
+- Not doable here: Developer ID / Authenticode signing needs the owner's certificates (ISSUES.md #2 stays open)
