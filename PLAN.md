@@ -99,7 +99,9 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 - [x] P5 (S3) Fresh screenshots and gameplay GIF generated from the real QML
 - [x] P6 (S3) Refresh every Markdown document and the release notes
 - [x] P7 Re-check aqtinstall: still 3.3.0 on PyPI → keep the upstream pin
-- [~] P8 Release v1.1.0, verify the downloaded archives, then `/githubAbout` (add and remove topics)
+- [x] P8 Release v1.1.0, verify the downloaded archives, then `/githubAbout` (add and remove topics): published,
+      checksum verified, Linux archive started natively on Wayland; About updated (sound, Wayland/X11), topics
+      `game`, `cross-platform` → `arcade-game`, `procedural-audio`
 - [x] Found while testing: portrait/ultrawide frame left a big empty box → frame hugs the grid
 - [x] Found in CI: runners have no audio device, so QSoundEffect cannot load there → WAV format checked from the
       resources, device loading only where an output exists
