@@ -6,7 +6,7 @@ Tapocalypse is a neon arcade take on the classic SameGame: clear groups of three
 board fall and slide into new combinations, and chase a score that grows with the *square* of every group you pop.
 Small groups are safe. Big groups are glorious. Greed is rewarded — until the board locks up.
 
-[![Tapocalypse gameplay](media/typocalypse.gif)](media/typocalypse.mp4)
+[![Tapocalypse gameplay](media/gameplay.gif)](media/gameplay.mp4)
 
 [**Download for Linux, Windows or macOS**](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame/releases/latest) ·
 [Rules](RULES.md) · Build from source: see below
