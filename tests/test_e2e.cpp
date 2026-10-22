@@ -325,8 +325,10 @@ void EndToEndTest::layout_fitsEveryScreenShape() {
     const QRectF tiles = item("tileView")->mapRectToScene(item("tileView")->boundingRect());
     QVERIFY2(QRectF(QPointF(0, 0), QSizeF(size)).contains(frame), "board frame leaves the window");
     QVERIFY2(frame.adjusted(-0.5, -0.5, 0.5, 0.5).contains(tiles), "tile grid overflows the board frame");
-    // The grid uses most of the free space along its tighter axis.
-    QVERIFY(tiles.width() >= frame.width() * 0.75 || tiles.height() >= frame.height() * 0.75);
+    // The grid uses most of the space left for it along its tighter axis, and the frame hugs the grid on both axes.
+    const QRectF area = item("boardArea")->mapRectToScene(item("boardArea")->boundingRect());
+    QVERIFY2(tiles.width() >= area.width() * 0.85 || tiles.height() >= area.height() * 0.85, "grid leaves its area unused");
+    QVERIFY2(tiles.width() >= frame.width() * 0.85 && tiles.height() >= frame.height() * 0.75, "frame leaves empty space around the grid");
 
     // Tiles stay clickable at every size: click a known group and see it resolve.
     controller()->setGridForTesting(makeGrid({
@@ -343,6 +345,7 @@ void EndToEndTest::layout_fitsEveryScreenShape() {
     if (!shotDir.isEmpty()) {
         QMetaObject::invokeMethod(scoreDialog(), "close");
         controller()->reset();
+        QTest::mouseMove(window(), QPoint(1, size.height() - 2));
         QTest::qWait(400);
         window()->grabWindow().save(QStringLiteral("%1/layout-%2x%3.png").arg(shotDir).arg(size.width()).arg(size.height()));
     }

@@ -164,29 +164,38 @@ ApplicationWindow {
 
     }
 
-    // Board container with glow lines
-    Rectangle {
-        anchors.fill: boardFrame
-        anchors.margins: -root.unit * 0.3
-        radius: boardFrame.radius + root.unit * 0.3
-        color: "#285500ea"
-    }
+    // Space left for the board; the grid takes the largest cell size that fits it.
+    Item {
+        id: boardArea
 
-    Rectangle {
-        id: boardFrame
-
-        objectName: "boardFrame"
+        objectName: "boardArea"
         anchors.top: header.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: root.unit * 1.5
-        radius: root.unit * 1.2
-        color: "#0B0D19"
-        border.color: "#14204F"
-        border.width: 2
 
-        // GameBoard fits the largest square cell into both dimensions and centres the grid.
+        // Glow and frame hug the grid, so tall or wide windows do not show an empty box around it.
+        Rectangle {
+            anchors.fill: boardFrame
+            anchors.margins: -root.unit * 0.3
+            radius: boardFrame.radius + root.unit * 0.3
+            color: "#285500ea"
+        }
+
+        Rectangle {
+            id: boardFrame
+
+            objectName: "boardFrame"
+            anchors.centerIn: parent
+            width: Math.min(parent.width, game.gridWidth + 2 * root.unit)
+            height: Math.min(parent.height, game.gridHeight + 2 * root.unit)
+            radius: root.unit * 1.2
+            color: "#0B0D19"
+            border.color: "#14204F"
+            border.width: 2
+        }
+
         GameBoard {
             id: game
 

@@ -14,6 +14,9 @@ Item {
     readonly property real cell: Math.min(width / (cols + gapRatio * (cols - 1)), height / (rows + gapRatio * (rows - 1)))
     readonly property real spacing: cell * gapRatio
     readonly property real pitch: cell + spacing
+    // Footprint of the tile grid, so the window can frame the grid instead of the whole area.
+    readonly property real gridWidth: cols * cell + (cols - 1) * spacing
+    readonly property real gridHeight: rows * cell + (rows - 1) * spacing
     readonly property int score: controller.score
     readonly property int moves: controller.moves
     readonly property bool gameOver: controller.gameOver
@@ -95,8 +98,8 @@ Item {
 
         objectName: "tileView"
         anchors.centerIn: parent
-        width: cols * cell + (cols - 1) * spacing
-        height: rows * cell + (rows - 1) * spacing
+        width: board.gridWidth
+        height: board.gridHeight
 
         Repeater {
             id: repeater
