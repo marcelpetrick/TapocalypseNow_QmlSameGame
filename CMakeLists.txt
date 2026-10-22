@@ -10,9 +10,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(CTest)
 
 option(TAPOCALYPSE_ENABLE_COVERAGE "Build with gcov/gcovr coverage instrumentation" OFF)
+# Sound needs Qt Multimedia. Embedded images without it (or without audio) can switch it off; the game stays silent.
+option(TAPOCALYPSE_SOUND "Play sound effects through Qt Multimedia" ON)
 
 # Find the Qt 6.5+ bits we actually use
 find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Quick Qml Test)
+if(TAPOCALYPSE_SOUND)
+    find_package(Qt6 6.5 COMPONENTS Multimedia)
+    if(NOT Qt6Multimedia_FOUND)
+        message(WARNING "Qt Multimedia not found: building without sound. Install it or pass -DTAPOCALYPSE_SOUND=OFF.")
+    endif()
+endif()
 
 qt_standard_project_setup(REQUIRES 6.5)
 # Newer Qt releases know more policies than 6.5; opt into the ones that apply to this layout.
@@ -73,6 +81,33 @@ target_link_libraries(TapocalypseQml
         Qt6::Quick
 )
 
+# Sound cues, synthesized by tools/generate_sounds.py. Without Qt Multimedia the cue player is silent.
+add_library(TapocalypseSound STATIC
+    src/SoundEffects.cpp
+    src/SoundEffects.h
+)
+
+target_link_libraries(TapocalypseSound PUBLIC Qt6::Core)
+target_include_directories(TapocalypseSound PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+if(TAPOCALYPSE_SOUND AND Qt6Multimedia_FOUND)
+    target_link_libraries(TapocalypseSound PUBLIC Qt6::Multimedia)
+    target_compile_definitions(TapocalypseSound PUBLIC TAPOCALYPSE_HAS_SOUND)
+    qt_add_resources(TapocalypseSound tapocalypse_sounds
+        PREFIX /
+        FILES
+            sounds/deal.wav
+            sounds/gameover.wav
+            sounds/highscore.wav
+            sounds/land.wav
+            sounds/pop1.wav
+            sounds/pop2.wav
+            sounds/pop3.wav
+            sounds/pop4.wav
+            sounds/reject.wav
+    )
+endif()
+
 # Opt-in frame-time telemetry for field profiling (TAPOCALYPSE_PROFILE=1)
 add_library(TapocalypseProfiler STATIC
     src/FrameProfiler.cpp
@@ -95,6 +130,7 @@ target_link_libraries(Tapocalypse
         TapocalypseQml
         TapocalypseQmlplugin
         TapocalypseProfiler
+        TapocalypseSound
         Qt6::Gui
         Qt6::Qml
         Qt6::Quick
@@ -225,6 +261,19 @@ if(BUILD_TESTING)
     add_test(NAME FrameProfilerTests COMMAND FrameProfilerTests)
     set_tests_properties(FrameProfilerTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+    qt_add_executable(SoundEffectsTests
+        tests/test_soundeffects.cpp
+    )
+
+    target_link_libraries(SoundEffectsTests
+        PRIVATE
+            TapocalypseSound
+            Qt6::Core
+            Qt6::Test
+    )
+
+    add_test(NAME SoundEffectsTests COMMAND SoundEffectsTests)
+
     qt_add_executable(EndToEndTests
         tests/test_e2e.cpp
     )
@@ -233,6 +282,7 @@ if(BUILD_TESTING)
         PRIVATE
             TapocalypseQml
             TapocalypseQmlplugin
+            TapocalypseSound
             Qt6::Gui
             Qt6::Quick
             Qt6::Test
@@ -265,7 +315,7 @@ if(BUILD_TESTING)
                     --json-summary ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/summary.json
                     --json-summary-pretty
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests RulesConformanceTests FrameProfilerTests EndToEndTests
+                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests RulesConformanceTests FrameProfilerTests SoundEffectsTests EndToEndTests
                 USES_TERMINAL
                 COMMENT "Running tests and generating text/json coverage report"
             )
@@ -286,7 +336,7 @@ if(BUILD_TESTING)
                     --json-summary ${TAPOCALYPSE_COVERAGE_OUTPUT_DIR}/summary.json
                     --json-summary-pretty
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests RulesConformanceTests FrameProfilerTests EndToEndTests
+                DEPENDS GameRulesTests GameBoardControllerTests GameLogicBridgeTests HighScoreManagerTests RulesConformanceTests FrameProfilerTests SoundEffectsTests EndToEndTests
                 USES_TERMINAL
                 COMMENT "Running tests and generating HTML coverage summary"
             )
