@@ -184,11 +184,16 @@ void GameBoardControllerTest::removeGroup_runsFullMoveFlowAndScores() {
     }));
 
     QSignalSpy endedSpy(&controller, &GameBoardController::gameEnded);
+    QSignalSpy selectedSpy(&controller, &GameBoardController::groupSelected);
+    QSignalSpy landedSpy(&controller, &GameBoardController::tilesLanded);
+    QSignalSpy rejectedSpy(&controller, &GameBoardController::moveRejected);
 
     controller.removeGroup(0, 1);
 
     QVERIFY(controller.busy());
     QCOMPARE(controller.popSet().size(), 4);
+    QCOMPARE(selectedSpy.count(), 1);
+    QCOMPARE(selectedSpy.takeFirst().at(0).toInt(), 4);
 
     QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), 100);
 
@@ -203,6 +208,9 @@ void GameBoardControllerTest::removeGroup_runsFullMoveFlowAndScores() {
     QVERIFY(controller.gameOver());
     QCOMPARE(endedSpy.count(), 1);
     QCOMPARE(endedSpy.takeFirst().at(0).toInt(), 16);
+    // Column 2 falls, then columns shift left: two landings, no rejection.
+    QCOMPARE(landedSpy.count(), 2);
+    QCOMPARE(rejectedSpy.count(), 0);
 }
 
 void GameBoardControllerTest::removeGroup_ignoresOutOfBoundsBusyEmptyAndGameOverClicks() {
@@ -321,8 +329,13 @@ void GameBoardControllerTest::invalidSelection_shakesThenClears() {
         {4, 5, 6},
     }));
 
+    QSignalSpy rejectedSpy(&controller, &GameBoardController::moveRejected);
+    QSignalSpy selectedSpy(&controller, &GameBoardController::groupSelected);
+
     controller.removeGroup(0, 0);
 
+    QCOMPARE(rejectedSpy.count(), 1);
+    QCOMPARE(selectedSpy.count(), 0);
     QVERIFY(controller.shakeSet().contains("0,0"));
     QTRY_VERIFY_WITH_TIMEOUT(controller.shakeSet().isEmpty(), 100);
     QCOMPARE(controller.score(), 0);

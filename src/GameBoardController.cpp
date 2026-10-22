@@ -353,6 +353,7 @@ void GameBoardController::removeGroup(int row, int col) {
         shake.insert(positionKey(row, col), true);
         setShakeSet(shake);
         m_shakeClearTimer.start(m_shakeClearMs);
+        emit moveRejected();
         return;
     }
 
@@ -363,6 +364,7 @@ void GameBoardController::removeGroup(int row, int col) {
     setHintSet({});
     setPopSet(toSelectionMap(analysis.group));
     m_removePreviewTimer.start(m_removePreviewMs);
+    emit groupSelected(static_cast<int>(analysis.group.size()));
 }
 
 void GameBoardController::registerUserAction() { restartHintIdleTimer(); }
@@ -431,12 +433,14 @@ void GameBoardController::onFallTimer() {
     setGridState(m_pendingMovePlan.afterFallGrid);
     setMovingTiles({});
     setHiddenSet({});
+    emit tilesLanded();
     applyShiftPhase();
 }
 
 void GameBoardController::onShiftTimer() {
     setMovingTiles({});
     setHiddenSet({});
+    emit tilesLanded();
     finishMovePhases();
 }
 

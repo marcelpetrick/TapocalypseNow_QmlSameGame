@@ -223,6 +223,15 @@ class GameBoardController : public QObject {
      * This is emitted after a resolved move leaves no remaining legal move on the board.
      */
     void gameEnded(int score);
+    /**
+     * @brief Emitted when a click starts removing a group.
+     * @param size Number of tiles in the group.
+     */
+    void groupSelected(int size);
+    /// Emitted when a click hits a tile whose group is smaller than the minimum group size.
+    void moveRejected();
+    /// Emitted each time falling or sliding tiles settle: once after the fall phase and once after the shift phase.
+    void tilesLanded();
 
    private:
     // White-box tests drive the internal move phases directly.
