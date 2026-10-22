@@ -1,7 +1,8 @@
 /**
  * End-to-end tests: load the shipped main.qml offscreen and play it through real mouse and key events.
  *
- * Set TAPOCALYPSE_E2E_SCREENSHOT_DIR to save a screenshot per checked window size.
+ * Set TAPOCALYPSE_E2E_SCREENSHOT_DIR to save a screenshot per checked window size, and TAPOCALYPSE_E2E_RECORD_DIR to
+ * record numbered frames of a demo game at normal speed (tools/make_media.sh turns them into the README media).
  */
 
 #include <QGuiApplication>
@@ -11,6 +12,7 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QSignalSpy>
+#include <QTimer>
 #include <QTemporaryDir>
 #include <QtTest>
 #include <memory>
@@ -58,6 +60,7 @@ class EndToEndTest : public QObject {
     void soundButton_mutesAndRemembers();
     void layout_fitsEveryScreenShape_data();
     void layout_fitsEveryScreenShape();
+    void recordDemo();
 
    private:
     QQuickWindow* window() const;
@@ -349,6 +352,45 @@ void EndToEndTest::layout_fitsEveryScreenShape() {
         QTest::qWait(400);
         window()->grabWindow().save(QStringLiteral("%1/layout-%2x%3.png").arg(shotDir).arg(size.width()).arg(size.height()));
     }
+}
+
+void EndToEndTest::recordDemo() {
+    const QString frameDir = qEnvironmentVariable("TAPOCALYPSE_E2E_RECORD_DIR");
+    if (frameDir.isEmpty()) QSKIP("set TAPOCALYPSE_E2E_RECORD_DIR to record the demo");
+
+    // Normal speed and a fixed seed-independent strategy: always take the biggest group, like a greedy player.
+    window()->resize(1280, 720);
+    QTRY_COMPARE(window()->size(), QSize(1280, 720));
+    controller()->setAnimationTimingsForTesting(220, 200, 320, 260, 180);
+    click(item("newGameButton"));
+
+    int frame = 0;
+    QTimer recorder;
+    QObject::connect(&recorder, &QTimer::timeout, this, [&] {
+        window()->grabWindow().save(QStringLiteral("%1/frame-%2.png").arg(frameDir).arg(frame++, 4, 10, QLatin1Char('0')));
+    });
+    recorder.start(1000 / 15);
+    QTest::qWait(900);
+
+    for (int move = 0; move < 9 && !controller()->gameOver(); ++move) {
+        GroupAnalysis best;
+        const GameGrid& grid = controller()->gridState();
+        for (int row = 0; row < grid.size(); ++row) {
+            for (int col = 0; col < grid[row].size(); ++col) {
+                const auto group = GameRules::analyzeSelection(grid, row, col, 3);
+                if (group.valid && group.groupSize > best.groupSize) best = group;
+            }
+        }
+        QVERIFY(best.valid);
+        const auto target = best.group.first();
+        QTest::mouseMove(window(), tileCenter(target.row, target.col));
+        QTest::qWait(700);
+        clickTile(target.row, target.col);
+        waitUntilIdle();
+        QTest::qWait(250);
+    }
+    recorder.stop();
+    QVERIFY(frame > 0);
 }
 
 int main(int argc, char** argv) {
