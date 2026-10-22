@@ -1,4 +1,4 @@
-# Tapocalypse
+# <img src="packaging/tapocalypse.svg" alt="" width="40" align="center"> Tapocalypse
 
 **One click. Whole groups vanish. The board collapses. How far can you take it?**
 
@@ -35,14 +35,23 @@ a single 12-tile group (144 points) beats four 3-tile groups (36 points) by a fa
 
 ## Get it
 
-1. Open the [latest release](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame/releases/latest).
-2. Download the archive for your system and unpack it.
-3. Start it:
-   - Linux x86_64: `bin/tapocalypse` (native on Wayland and on X11)
-   - Windows x86_64: `bin\tapocalypse.exe`
-   - macOS (Apple silicon): `tapocalypse.app` — unsigned, so right-click → **Open** the first time.
+Open the [latest release](https://github.com/marcelpetrick/TapocalypseNow_QmlSameGame/releases/latest) and pick
+your file:
 
-Everything Qt needs is in the archive. Checksums are in `SHA256SUMS.txt`.
+| System | Download | Start |
+|---|---|---|
+| **Linux x86_64** (recommended) | `tapocalypse-*-linux-x86_64.AppImage` | `chmod +x tapocalypse-*.AppImage` then run it — one file, nothing to unpack |
+| Linux x86_64 (folder) | `tapocalypse-*-linux-x86_64.tar.gz` | unpack, run `bin/tapocalypse` |
+| Windows x86_64 | `tapocalypse-*-windows-x86_64.zip` | unpack, run `bin\tapocalypse.exe` |
+| macOS Apple silicon | `tapocalypse-*-macos-arm64.zip` | unpack, right-click `tapocalypse.app` → **Open** the first time (not notarized) |
+
+Everything Qt needs is inside; Linux runs natively on Wayland and on X11. Checksums are in `SHA256SUMS.txt`.
+
+**Install on Linux for your user** (puts `tapocalypse` on your `PATH` if `~/.local/bin` is on it):
+
+```bash
+install -Dm755 tapocalypse-*-linux-x86_64.AppImage ~/.local/bin/tapocalypse
+```
 
 ## What you get
 
@@ -143,14 +152,16 @@ Save end-to-end screenshots with `TAPOCALYPSE_E2E_SCREENSHOT_DIR=/some/dir ./bui
 |---|---|
 | Re-synthesize the sound cues into `sounds/` | `python3 tools/generate_sounds.py` (standard library only, reproducible) |
 | Regenerate screenshots, GIF and MP4 in `media/` | `tools/make_media.sh` (needs a built tree and `ffmpeg`) |
+| Build an AppImage from a deployed install | `tools/make_appimage.sh <install-dir> <out.AppImage> <appimagetool> <runtime>` |
 
 ### Continuous integration and releases
 
 - **CI** (`.github/workflows/ci.yml`): Linux, Windows and macOS with Qt 6.12, Linux with Qt 6.5, and a silent Linux
   build without Qt Multimedia.
 - **Release** (`.github/workflows/release.yml`): push a tag `vX.Y.Z` → tested, self-contained archives for all three
-  platforms on a GitHub release. Each archive is smoke-started with the CI Qt hidden: Linux under both X11 and a
-  Wayland-only session, macOS after an ad-hoc re-seal of the bundle. The app and bundles report the tag's version; keep
+  platforms plus a Linux AppImage on a GitHub release. Each package is smoke-started with the CI Qt hidden: the Linux
+  tarball and AppImage under both X11 and a Wayland-only session, macOS after an ad-hoc re-seal of the bundle.
+  AppImage tooling (appimagetool 1.9.1, type2 runtime 20251108) is pinned by checksum. The app and bundles report the tag's version; keep
   `project(... VERSION ...)` in `CMakeLists.txt` in step for local builds.
 
 ### Runtime switches
@@ -174,6 +185,7 @@ Save end-to-end screenshots with `TAPOCALYPSE_E2E_SCREENSHOT_DIR=/some/dir ./bui
 | No `console.log` output in Qt Creator | Already forced to stderr; check `QT_FORCE_STDERR_LOGGING` isn't set to `0` |
 | No sound | Check the **Sound** button (or press **M**); builds without Qt Multimedia hide the button and stay silent |
 | Linux: wrong display backend | Force one with `QT_QPA_PLATFORM=wayland` or `QT_QPA_PLATFORM=xcb` |
+| AppImage: "Cannot mount AppImage, please check your FUSE setup" | Install `fuse3` (or `fuse`), or run it with `APPIMAGE_EXTRACT_AND_RUN=1` |
 | Reset the highscores | Quit the game and delete `highscores.json` (see below) |
 
 ## Storage
@@ -205,7 +217,8 @@ Save end-to-end screenshots with `TAPOCALYPSE_E2E_SCREENSHOT_DIR=/some/dir ./bui
 ├─ qml/                  QML user interface
 ├─ sounds/               synthesized WAV cues (generated)
 ├─ media/                README screenshots and GIF (generated)
-├─ tools/                sound synthesizer, media generator
+├─ packaging/            app icon and desktop entry
+├─ tools/                sound synthesizer, media and AppImage builders
 ├─ tests/                Qt Test suites, incl. end-to-end
 └─ .github/workflows/    CI and release
 ```

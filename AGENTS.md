@@ -19,6 +19,7 @@ Read this before changing anything. Normal procedures first, then limits, then a
 | Run the app headless | `QT_QPA_PLATFORM=offscreen timeout 3 ./build/bin/tapocalypse --windowed --mute` (exit 124 = it ran) |
 | Change a sound | Edit `tools/generate_sounds.py`, run `python3 tools/generate_sounds.py`, commit script and WAVs together |
 | Refresh README media | `tools/make_media.sh` (screenshots, GIF, MP4 from the real QML; needs `ffmpeg`) |
+| Build an AppImage | Deploy-install (`-DTAPOCALYPSE_DEPLOY_QT=ON`, `cmake --install`), then `tools/make_appimage.sh` (see the release workflow for the pinned tools) |
 
 **Definition of done:** the pipeline summary has no `FAIL`, coverage stays ≥ 90 % lines, clang-format and qmlformat
 change nothing, and new behaviour has a test.
@@ -57,6 +58,8 @@ change nothing, and new behaviour has a test.
 - `-DTAPOCALYPSE_SOUND=OFF` must keep building and passing (CI job "no sound"): guard Multimedia code with
   `TAPOCALYPSE_HAS_SOUND`.
 - Linux bundles must keep both platform plugins (`xcb` and `wayland`, see `INCLUDE_PLUGINS` in `CMakeLists.txt`).
+- Downloaded release tooling (appimagetool, AppImage runtime) is pinned to a release and verified by SHA-256; bump
+  URL and checksum together.
 - Performance target is an i.MX8M Mini: avoid per-tile work that scales with the board (convert controller data to
   JS once in `GameBoard.qml`, as the existing `grid`/`*Set` properties do).
 
