@@ -110,7 +110,8 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 ## 9. Linux AppImage (v1.1.1)
 
 - [x] v1.1.0 tarball deployed locally (`~/.local/opt`, symlink in `~/.local/bin`): runs on Wayland and X11
-- [~] AppImage built from the deployed install by `tools/make_appimage.sh`, pinned appimagetool 1.9.1 and type2
+- [x] AppImage built from the deployed install by `tools/make_appimage.sh`, pinned appimagetool 1.9.1 and type2
       runtime 20251108 (SHA-256 verified), smoke-tested on X11 and Wayland in the release workflow
-- [~] App icon and desktop entry (`packaging/`), window icon and Wayland desktop file name
-- [~] Docs, screenshots and recording refreshed; release v1.1.1; replace the local install with the AppImage
+- [x] App icon and desktop entry (`packaging/`), window icon and Wayland desktop file name
+- [x] Docs, screenshots and recording refreshed; v1.1.1 released (AppImage, tarball, Windows, macOS); local
+      install replaced by the checksum-verified AppImage in `~/.local/bin`, menu entry and icon added
