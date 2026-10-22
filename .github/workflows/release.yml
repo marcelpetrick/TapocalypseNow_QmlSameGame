@@ -35,7 +35,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1 libxcb-cursor0 xvfb
+          sudo apt-get install -y --no-install-recommends ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1 libxcb-cursor0 xvfb weston
 
       - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
@@ -68,32 +68,59 @@ jobs:
       - name: Install into a self-contained folder
         run: cmake --install build --config Release --prefix "stage/${{ steps.version.outputs.name }}"
 
+      - name: Seal the macOS bundle
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          # Deployment rewrites the bundled frameworks, which breaks their signatures; Apple silicon refuses to start
+          # a bundle with broken signatures ("damaged"). Re-seal it ad hoc and prove the seal holds.
+          app="stage/${{ steps.version.outputs.name }}/tapocalypse.app"
+          codesign --force --deep --sign - "${app}"
+          codesign --verify --deep --strict --verbose=2 "${app}"
+
       - name: Smoke-test the packaged app
         shell: bash
         run: |
           root="stage/${{ steps.version.outputs.name }}"
           case "${RUNNER_OS}" in
-            Linux) app="${root}/bin/tapocalypse"; launcher=(xvfb-run -a) ;;
-            Windows) app="${root}/bin/tapocalypse.exe"; launcher=() ;;
-            macOS) app="${root}/tapocalypse.app/Contents/MacOS/tapocalypse"; launcher=() ;;
+            Linux) app="${root}/bin/tapocalypse" ;;
+            Windows) app="${root}/bin/tapocalypse.exe" ;;
+            macOS) app="${root}/tapocalypse.app/Contents/MacOS/tapocalypse" ;;
           esac
           # Run the archive as a user would get it: hide the CI Qt installation (plugin/QML paths and PATH entries)
           # so only bundled libraries, plugins and QML modules can satisfy the app, on the platform's real backend.
           unset QT_PLUGIN_PATH QML2_IMPORT_PATH QML_IMPORT_PATH QT_QPA_PLATFORM_PLUGIN_PATH QT_QPA_PLATFORM
           PATH="$(printf '%s' "${PATH}" | tr ':' '\n' | grep -v '/Qt/' | paste -sd: -)"
-          log="${RUNNER_TEMP}/smoke.log"
-          ${launcher[@]+"${launcher[@]}"} "${app}" --windowed > "${log}" 2>&1 &
-          pid=$!
-          sleep 8
-          if ! kill -0 "${pid}" 2>/dev/null; then
-            wait "${pid}"; status=$?; cat "${log}"; echo "app exited early with status ${status}"; exit 1
+
+          # smoke <label> <launcher...>: start the app, require it to keep running and to report no missing parts.
+          smoke() {
+            local label="$1"; shift
+            local log="${RUNNER_TEMP}/smoke-${label}.log"
+            "$@" "${app}" --windowed > "${log}" 2>&1 &
+            local pid=$!
+            sleep 8
+            if ! kill -0 "${pid}" 2>/dev/null; then
+              local status=0; wait "${pid}" || status=$?
+              cat "${log}"; echo "[${label}] app exited early with status ${status}"; exit 1
+            fi
+            kill "${pid}" || true
+            cat "${log}"
+            if grep -qiE 'could not find the qt platform plugin|could not load the qt platform plugin|module .* is not installed|failed to load|does not support customization' "${log}"; then
+              echo "[${label}] app started but reported missing runtime parts or an unthemed style"; exit 1
+            fi
+            echo "[${label}] packaged app is self-contained and running"
+          }
+
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            smoke x11 env QT_QPA_PLATFORM=xcb xvfb-run -a
+            # Wayland-only session: no X server to fall back to, headless Weston as the compositor.
+            export XDG_RUNTIME_DIR="${RUNNER_TEMP}/xdg"; mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
+            weston --backend=headless-backend.so --socket=tapocalypse-wl --idle-time=0 > "${RUNNER_TEMP}/weston.log" 2>&1 &
+            for _ in $(seq 50); do [[ -S "${XDG_RUNTIME_DIR}/tapocalypse-wl" ]] && break; sleep 0.2; done
+            smoke wayland env -u DISPLAY QT_QPA_PLATFORM=wayland WAYLAND_DISPLAY=tapocalypse-wl
+          else
+            smoke native env
           fi
-          kill "${pid}" || true
-          cat "${log}"
-          if grep -qiE 'could not find the qt platform plugin|module .* is not installed|failed to load|does not support customization' "${log}"; then
-            echo "app started but reported missing runtime parts or an unthemed style"; exit 1
-          fi
-          echo "packaged app is self-contained and running"
 
       - name: Archive
         shell: bash
