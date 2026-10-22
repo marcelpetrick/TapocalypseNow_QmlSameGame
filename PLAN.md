@@ -106,3 +106,11 @@ Legend: `[x]` done · `[ ]` open · `[~]` in progress.
 - [x] Found in CI: runners have no audio device, so QSoundEffect cannot load there → WAV format checked from the
       resources, device loading only where an output exists
 - Not doable here: Developer ID / Authenticode signing needs the owner's certificates (ISSUES.md #2 stays open)
+
+## 9. Linux AppImage (v1.1.1)
+
+- [x] v1.1.0 tarball deployed locally (`~/.local/opt`, symlink in `~/.local/bin`): runs on Wayland and X11
+- [~] AppImage built from the deployed install by `tools/make_appimage.sh`, pinned appimagetool 1.9.1 and type2
+      runtime 20251108 (SHA-256 verified), smoke-tested on X11 and Wayland in the release workflow
+- [~] App icon and desktop entry (`packaging/`), window icon and Wayland desktop file name
+- [~] Docs, screenshots and recording refreshed; release v1.1.1; replace the local install with the AppImage
