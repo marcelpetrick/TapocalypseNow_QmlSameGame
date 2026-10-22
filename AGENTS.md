@@ -39,7 +39,8 @@ change nothing, and new behaviour has a test.
 ## 4. Tests to extend
 
 - Rule change → `tests/test_gamerules.cpp` and, if it is a RULES.md invariant, `tests/test_rules_conformance.cpp`.
-- Controller behaviour → `tests/test_gameboardcontroller.cpp` (it may poke private members via `#define private public`).
+- Controller behaviour → `tests/test_gameboardcontroller.cpp` (white-box access through `friend class ::GameBoardControllerTest`; never `#define private public`, which
+  breaks MSVC linking because MSVC mangles access specifiers).
 - Anything the player sees or clicks → `tests/test_e2e.cpp`; items are found by `objectName`, so keep those stable.
 
 ## 5. Limits
