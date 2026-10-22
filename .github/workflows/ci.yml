@@ -27,6 +27,11 @@ jobs:
           - name: Linux · Qt 6.5 (minimum)
             os: ubuntu-22.04
             qt: 6.5.3
+          # Embedded configuration: no Qt Multimedia dependency, silent game.
+          - name: Linux · Qt 6.12 · no sound
+            os: ubuntu-24.04
+            qt: 6.12.0
+            cmake_args: -DTAPOCALYPSE_SOUND=OFF
           - name: Windows · Qt 6.12
             os: windows-2022
             qt: 6.12.0
@@ -41,19 +46,20 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1
+          sudo apt-get install -y --no-install-recommends ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1 libpulse0 libpulse-mainloop-glib0
 
       - name: Install Qt ${{ matrix.qt }}
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: ${{ matrix.qt }}
+          modules: qtmultimedia
           cache: true
           # aqtinstall 3.3.0 (latest release) cannot read the per-architecture Windows repository layout used since
           # Qt 6.11; the fix (miurahr/aqtinstall#1000) is merged but unreleased, so pin that upstream commit.
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@076e1659807d0b362a3ed684d54c2e9c775eb9c7
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ runner.os == 'Linux' && '-G Ninja' || '' }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ runner.os == 'Linux' && '-G Ninja' || '' }} ${{ matrix.cmake_args }}
 
       - name: Build
         run: cmake --build build --config Release --parallel

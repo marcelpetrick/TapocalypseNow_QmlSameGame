@@ -35,12 +35,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1 libxcb-cursor0 xvfb weston
+          sudo apt-get install -y --no-install-recommends ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1 libpulse0 libpulse-mainloop-glib0 libxcb-cursor0 xvfb weston
 
       - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: ${{ env.QT_VERSION }}
+          modules: qtmultimedia
           cache: true
           # aqtinstall 3.3.0 (latest release) cannot read the per-architecture Windows repository layout used since
           # Qt 6.11; the fix (miurahr/aqtinstall#1000) is merged but unreleased, so pin that upstream commit.
@@ -105,7 +106,7 @@ jobs:
             fi
             kill "${pid}" || true
             cat "${log}"
-            if grep -qiE 'could not find the qt platform plugin|could not load the qt platform plugin|module .* is not installed|failed to load|does not support customization' "${log}"; then
+            if grep -qiE 'could not find the qt platform plugin|could not load the qt platform plugin|module .* is not installed|failed to load|does not support customization|no qtmultimedia backends' "${log}"; then
               echo "[${label}] app started but reported missing runtime parts or an unthemed style"; exit 1
             fi
             echo "[${label}] packaged app is self-contained and running"
